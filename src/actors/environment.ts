@@ -1,13 +1,13 @@
 import { Vec2 } from 'planck'
-import { Sim } from '../sim'
 import { Actor } from './actor'
 import { Platform } from '../features/platform'
+import { Stage } from '../stage'
 
 export class Environment extends Actor {
   platforms: Platform[] = []
 
-  constructor (sim: Sim) {
-    super(sim, {
+  constructor (stage: Stage) {
+    super(stage, {
       type: 'static'
     })
     this.label = 'environment'

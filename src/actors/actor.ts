@@ -1,19 +1,19 @@
 import { Body, BodyDef, Fixture } from 'planck'
-import { Sim } from '../sim'
+import { Stage } from '../stage'
 
 export class Actor {
-  sim: Sim
+  stage: Stage
   id: string
   body: Body
   label = 'actor'
   removed = false
 
-  constructor (sim: Sim, bodyDef: BodyDef) {
-    this.sim = sim
-    this.sim.actorCount += 1
-    this.id = String(sim.actorCount)
-    this.sim.actors.set(this.id, this)
-    this.body = this.sim.world.createBody(bodyDef)
+  constructor (stage: Stage, bodyDef: BodyDef) {
+    this.stage = stage
+    this.stage.actorCount += 1
+    this.id = String(stage.actorCount)
+    this.stage.actors.set(this.id, this)
+    this.body = this.stage.world.createBody(bodyDef)
     this.body.setUserData(this)
   }
 
@@ -29,8 +29,8 @@ export class Actor {
 
   postStep (dt: number): void {
     if (this.removed) {
-      this.sim.world.destroyBody(this.body)
-      this.sim.actors.delete(this.id)
+      this.stage.world.destroyBody(this.body)
+      this.stage.actors.delete(this.id)
     }
   }
 

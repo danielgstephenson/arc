@@ -1,18 +1,19 @@
 import { Vec2 } from 'planck'
-import { Sim } from '../sim'
 import { Actor } from './actor'
 import { Torso } from '../features/torso'
+import { Stage } from '../stage'
+import { normalize } from '../math'
 
 export class Fighter extends Actor {
   torso: Torso
   movePower = 5
-  swingPower = 5
+  moveDir = new Vec2(0, 0)
 
-  constructor (sim: Sim, position: Vec2) {
-    super(sim, {
+  constructor (stage: Stage, position: Vec2) {
+    super(stage, {
       type: 'dynamic',
       bullet: true,
-      linearDamping: 0,
+      linearDamping: 0.7,
       fixedRotation: true
     })
     this.label = 'fighter'
@@ -22,5 +23,12 @@ export class Fighter extends Actor {
 
   preStep (dt: number): void {
     super.preStep(dt)
+    this.move()
+  }
+
+  move (): void {
+    this.moveDir = normalize(this.moveDir)
+    const force = Vec2.mul(this.moveDir, this.movePower)
+    this.body.applyForceToCenter(force)
   }
 }

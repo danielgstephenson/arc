@@ -1,21 +1,20 @@
 import { Environment } from './actors/environment'
 import { Fighter } from './actors/fighter'
 import { Camera } from './camera'
-import { Torso } from './features/torso'
-import { Sim } from './sim'
+import { Stage } from './stage'
 
 export class Renderer {
   camera = new Camera()
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
-  sim: Sim
+  stage: Stage
 
   backgroundColor = 'hsl(0,0%,10%)'
   torsoColor = 'hsl(220,100%,40%)'
   platformColor = 'hsl(0,0%,35%)'
 
-  constructor (sim: Sim) {
-    this.sim = sim
+  constructor (stage: Stage) {
+    this.stage = stage
     this.canvas = document.getElementById('canvas') as HTMLCanvasElement
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D
     this.draw()
@@ -24,9 +23,9 @@ export class Renderer {
   draw (): void {
     window.requestAnimationFrame(() => this.draw())
     this.setupCanvas()
-    const actors = [...this.sim.actors.values()]
+    this.camera.position = this.stage.player.body.getWorldCenter()
+    const actors = [...this.stage.actors.values()]
     const fighters = actors.filter(a => a instanceof Fighter)
-    console.log('fighters.length', fighters.length)
     fighters.forEach(fighter => this.drawTorso(fighter))
     const environments = actors.filter(a => a instanceof Environment)
     environments.forEach(environment => this.drawPlatforms(environment))
@@ -36,9 +35,9 @@ export class Renderer {
     this.resetContext()
     this.context.fillStyle = this.torsoColor
     const center = fighter.body.getWorldCenter()
-    const x = center.x - 0.5 * Torso.width
-    const y = center.y - 0.5 * Torso.height
-    this.context.fillRect(x, y, Torso.width, Torso.height)
+    this.context.beginPath()
+    this.context.arc(center.x, center.y, fighter.torso.radius, 0, 2 * Math.PI)
+    this.context.fill()
   }
 
   drawPlatforms (environment: Environment): void {

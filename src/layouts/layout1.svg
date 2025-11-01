@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="100mm"
+   height="100mm"
+   viewBox="0 0 100 100"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   sodipodi:docname="layout1.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     bordercolor="#cccccc"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="1"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="in"
+     showgrid="true"
+     units="mm"
+     inkscape:zoom="1.466344"
+     inkscape:cx="398.61042"
+     inkscape:cy="475.67282"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     pagecolor="#242424"
+     width="100mm"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:snap-global="true"
+     inkscape:snap-object-midpoints="true"
+     inkscape:showpageshadow="2"
+     inkscape:deskcolor="#242424"
+     showborder="false">
+    <inkscape:grid
+       type="xygrid"
+       id="grid8030"
+       units="mm"
+       spacingx="2.5"
+       spacingy="2.5"
+       empspacing="2"
+       dotted="false"
+       originx="0"
+       originy="0"
+       visible="true"
+       color="#3f7eff"
+       opacity="0.1254902"
+       empcolor="#3fff53"
+       empopacity="0.14117647" />
+  </sodipodi:namedview>
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Border"
+     inkscape:groupmode="layer"
+     id="layer1"
+     sodipodi:insensitive="true">
+    <path
+       id="rect2617"
+       style="fill:#060606;fill-opacity:1;stroke-width:5.43908;stroke-linecap:round"
+       d="m 45,115 h 15 l 5,5 v 30 10 l -10,10 -17.5,7.5 H 7.5 L -10,170 l -10,-12.5 5,-22.5 10,-5 10,10 5,10 25,5 5,-5 v -30 z"
+       sodipodi:nodetypes="cccccccccccccccccc"
+       inkscape:label="path" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="Gaps">
+    <path
+       id="rect6411"
+       style="display:inline;mix-blend-mode:normal;fill:#00ff00;fill-opacity:1;stroke-width:2.6416;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none"
+       inkscape:label="gap0"
+       d="m 350,-2.5 h -70 l 5,-15 -5,-15 h 180 l -5,30 h -70 l -15,15 h -5 z"
+       sodipodi:nodetypes="cccccccccc" />
+  </g>
+</svg>

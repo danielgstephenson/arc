@@ -1,20 +1,20 @@
-import { Box } from 'planck'
+import { Circle } from 'planck'
 import { Feature } from './feature'
 import { Fighter } from '../actors/fighter'
 
 export class Torso extends Feature {
-  static width = 4
-  static height = 10
   fighter: Fighter
+  radius: number
   alive = true
 
-  constructor (fighter: Fighter) {
+  constructor (fighter: Fighter, radius = 0.5) {
     super(fighter, {
-      shape: new Box(0.5 * Torso.width, 0.5 * Torso.height),
+      shape: new Circle(radius),
       density: 1,
       friction: 0,
       restitution: 0
     })
+    this.radius = radius
     this.fighter = fighter
     this.label = 'torso'
   }
