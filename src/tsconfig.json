@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ESNext",
+    "outDir": "../dist",
+    "esModuleInterop": true,
+    "lib": [
+      "ES6",
+      "ESNext",
+      "dom"
+    ],
+    "strict": true,
+    "sourceMap": true,
+    "composite": true,
+    "rootDir": "."
+  },
+  "include": ["**/*"],
+  "exclude": ["../dist/**/*"]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "arc",
+  "version": "1.0.0",
+  "description": "",
+  "author": "",
+  "scripts": {
+    "build:server": "npx tsc -build ./src",
+    "build:client": "npx parcel build ./src/public/client.html --dist-dir \"dist/public\"",
+    "build": "npm run build:server && npm run build:client",
+    "start": "node ./dist",
+    "dev": "npm run build && npm run start"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/fs-extra": "^11.0.4",
+    "parcel": "^2.16.0",
+    "ts-standard": "^12.0.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "fs-extra": "^11.3.2",
+    "planck": "^1.4.2"
+  },
+  "ts-standard": {
+    "project": "src/tsconfig.json",
+    "ignore": [
+      "dist"
+    ]
+  }
+}
