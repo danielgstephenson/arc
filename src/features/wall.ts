@@ -1,14 +1,14 @@
 import { Box, Vec2 } from 'planck'
 import { Feature } from './feature'
-import { Environment } from '../actors/environment'
+import { Arena } from '../actors/arena'
 
-export class Platform extends Feature {
-  environment: Environment
+export class Wall extends Feature {
+  environment: Arena
   center: Vec2
   width: number
   height: number
 
-  constructor (environment: Environment, width: number, height: number, center: Vec2) {
+  constructor (environment: Arena, width: number, height: number, center: Vec2) {
     const box = new Box(0.5 * width, 0.5 * height, center)
     super(environment, {
       shape: box,

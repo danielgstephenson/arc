@@ -34,7 +34,7 @@ export class Input {
   }
 
   onwheel (event: WheelEvent): void {
-    this.stage.renderer.camera.adjustZoom(-0.01 * event.deltaY)
+    this.stage.renderer.camera.adjustZoom(-0.002 * event.deltaY)
   }
 
   onmousemove (event: MouseEvent): void {

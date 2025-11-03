@@ -1,17 +1,18 @@
-import { Body, BodyDef, Fixture } from 'planck'
+import { Body, BodyDef, Fixture, Vec2 } from 'planck'
 import { Stage } from '../stage'
 
 export class Actor {
   stage: Stage
-  id: string
+  id: number
   body: Body
+  force = Vec2.zero()
   label = 'actor'
   removed = false
 
   constructor (stage: Stage, bodyDef: BodyDef) {
     this.stage = stage
     this.stage.actorCount += 1
-    this.id = String(stage.actorCount)
+    this.id = stage.actorCount
     this.stage.actors.set(this.id, this)
     this.body = this.stage.world.createBody(bodyDef)
     this.body.setUserData(this)

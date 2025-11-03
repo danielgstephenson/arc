@@ -23,9 +23,9 @@
      inkscape:document-units="in"
      showgrid="true"
      units="mm"
-     inkscape:zoom="1.466344"
-     inkscape:cx="398.61042"
-     inkscape:cy="475.67282"
+     inkscape:zoom="1.0368618"
+     inkscape:cx="266.67006"
+     inkscape:cy="566.6136"
      inkscape:window-width="1920"
      inkscape:window-height="1009"
      inkscape:window-x="1912"
@@ -64,12 +64,11 @@
   <g
      inkscape:label="Border"
      inkscape:groupmode="layer"
-     id="layer1"
-     sodipodi:insensitive="true">
+     id="layer1">
     <path
        id="rect2617"
        style="fill:#060606;fill-opacity:1;stroke-width:5.43908;stroke-linecap:round"
-       d="m 45,115 h 15 l 5,5 v 30 10 l -10,10 -17.5,7.5 H 7.5 L -10,170 l -10,-12.5 5,-22.5 10,-5 10,10 5,10 25,5 5,-5 v -30 z"
+       d="m 30,90 h 15 l 5,5 v 30 10 l -10,10 -17.5,7.5 h -30 L -25,145 l -10,-12.5 5,-22.5 10,-5 10,10 5,10 25,5 5,-5 V 95 Z"
        sodipodi:nodetypes="cccccccccccccccccc"
        inkscape:label="path" />
   </g>
@@ -81,7 +80,7 @@
        id="rect6411"
        style="display:inline;mix-blend-mode:normal;fill:#00ff00;fill-opacity:1;stroke-width:2.6416;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none"
        inkscape:label="gap0"
-       d="m 350,-2.5 h -70 l 5,-15 -5,-15 h 180 l -5,30 h -70 l -15,15 h -5 z"
+       d="m -75,70 h -70 l 5,-15 -5,-15 H 35 l -5,30 h -70 l -15,15 h -5 z"
        sodipodi:nodetypes="cccccccccc" />
   </g>
 </svg>

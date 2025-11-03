@@ -4,7 +4,7 @@ import { clamp } from './math'
 export class Camera {
   position = new Vec2(0, 0)
   maxZoom = 15
-  minZoom = -5
+  minZoom = -10
   zoom = 0
   scale = 1
 

@@ -14,7 +14,6 @@ export class Server {
     this.config = new Config()
     console.log('port:', this.config.port)
     console.log('secure:', this.config.secure)
-    console.log('bot:', this.config.bot)
     this.app = express()
     const dirname = path.dirname(__filename)
     const staticPath = path.join(dirname, 'public')

@@ -2,12 +2,17 @@ import { Vec2 } from 'planck'
 import { Actor } from './actor'
 import { Torso } from '../features/torso'
 import { Stage } from '../stage'
-import { normalize } from '../math'
+import { Weapon } from './weapon'
 
 export class Fighter extends Actor {
   torso: Torso
-  movePower = 5
+  weapon: Weapon
+  spawnPoint: Vec2
+  deathPoint: Vec2
+  movePower = 4
   moveDir = new Vec2(0, 0)
+  color = 'hsl(220,100%,40%)'
+  dead = false
 
   constructor (stage: Stage, position: Vec2) {
     super(stage, {
@@ -18,17 +23,9 @@ export class Fighter extends Actor {
     })
     this.label = 'fighter'
     this.body.setPosition(position)
+    this.spawnPoint = position
+    this.deathPoint = position
     this.torso = new Torso(this)
-  }
-
-  preStep (dt: number): void {
-    super.preStep(dt)
-    this.move()
-  }
-
-  move (): void {
-    this.moveDir = normalize(this.moveDir)
-    const force = Vec2.mul(this.moveDir, this.movePower)
-    this.body.applyForceToCenter(force)
+    this.weapon = new Weapon(this)
   }
 }
