@@ -1,6 +1,6 @@
 import { Circle } from 'planck'
 import { Feature } from './feature'
-import { Weapon } from '../actors/weapon'
+import { Weapon } from '../entities/weapon'
 
 export class Blade extends Feature {
   weapon: Weapon

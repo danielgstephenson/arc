@@ -1,6 +1,6 @@
 import { Chain, Vec2 } from 'planck'
 import { Feature } from './feature'
-import { Arena } from '../actors/arena'
+import { Arena } from '../entities/arena'
 
 export class Boundary extends Feature {
   arena: Arena

@@ -1,7 +1,7 @@
 import { Body, BodyDef, Fixture, Vec2 } from 'planck'
 import { Simulation } from '../simulation'
 
-export class Actor {
+export class Entity {
   simulation: Simulation
   id: number
   body: Body
@@ -11,9 +11,9 @@ export class Actor {
 
   constructor (simulation: Simulation, bodyDef: BodyDef) {
     this.simulation = simulation
-    this.simulation.actorCount += 1
-    this.id = simulation.actorCount
-    this.simulation.actors.set(this.id, this)
+    this.simulation.entityCount += 1
+    this.id = simulation.entityCount
+    this.simulation.entities.set(this.id, this)
     this.body = this.simulation.world.createBody(bodyDef)
     this.body.setUserData(this)
   }
@@ -31,7 +31,7 @@ export class Actor {
   postStep (dt: number): void {
     if (this.removed) {
       this.simulation.world.destroyBody(this.body)
-      this.simulation.actors.delete(this.id)
+      this.simulation.entities.delete(this.id)
     }
   }
 

@@ -4,11 +4,13 @@ import https from 'https'
 import fs from 'fs-extra'
 import path from 'path'
 import { Config } from './config'
+import { Messenger } from './messenger'
 
 export class Server {
   config: Config
   app: Express
   httpServer: http.Server | https.Server
+  messenger: Messenger
 
   constructor () {
     this.config = new Config()
@@ -34,5 +36,6 @@ export class Server {
     this.httpServer.listen(this.config.port, () => {
       console.log(`Listening on port ${this.config.port}`)
     })
+    this.messenger = new Messenger(this)
   }
 }

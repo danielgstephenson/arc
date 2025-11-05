@@ -1,10 +1,10 @@
 import { Vec2 } from 'planck'
-import { Actor } from './actor'
+import { Entity } from './entity'
 import { Wall } from '../features/wall'
 import { Simulation } from '../simulation'
 import { Boundary } from '../features/boundary'
 
-export class Arena extends Actor {
+export class Arena extends Entity {
   boundary: Boundary
   walls: Wall[] = []
 

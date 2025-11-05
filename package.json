@@ -13,22 +13,16 @@
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/fs-extra": "^11.0.4",
-    "assert": "^2.1.0",
-    "buffer": "^6.0.3",
-    "constants-browserify": "^1.0.0",
-    "events": "^3.3.0",
     "parcel": "^2.16.0",
-    "path-browserify": "^1.0.1",
-    "process": "^0.11.10",
-    "stream-browserify": "^3.0.0",
     "ts-standard": "^12.0.2",
-    "typescript": "^5.9.3",
-    "util": "^0.12.5"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "express": "^5.1.0",
     "fs-extra": "^11.3.2",
-    "planck": "^1.4.2"
+    "planck": "^1.4.2",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "ts-standard": {
     "project": "src/tsconfig.json",

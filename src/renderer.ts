@@ -1,11 +1,11 @@
 import { Vec2 } from 'planck'
-import { Arena } from './actors/arena'
-import { Fighter } from './actors/fighter'
+import { Arena } from './entities/arena'
+import { Fighter } from './entities/fighter'
 import { Camera } from './camera'
 import { Simulation } from './simulation'
 import { Checker } from './checker'
 import { Boundary } from './features/boundary'
-import { Weapon } from './actors/weapon'
+import { Weapon } from './entities/weapon'
 import { dirFromTo } from './math'
 
 export class Renderer {
@@ -30,13 +30,13 @@ export class Renderer {
     this.setupCanvas()
     this.followPlayer()
     this.drawBoundary(this.simulation.arena.boundary)
-    const actors = [...this.simulation.actors.values()]
-    const weapons = actors.filter(a => a instanceof Weapon)
+    const entities = [...this.simulation.entities.values()]
+    const weapons = entities.filter(a => a instanceof Weapon)
     weapons.forEach(weapon => this.drawSpring(weapon))
     weapons.forEach(weapon => this.drawBlade(weapon))
-    const fighters = actors.filter(a => a instanceof Fighter)
+    const fighters = entities.filter(a => a instanceof Fighter)
     fighters.forEach(fighter => this.drawTorso(fighter))
-    const environments = actors.filter(a => a instanceof Arena)
+    const environments = entities.filter(a => a instanceof Arena)
     environments.forEach(environment => this.drawWalls(environment))
   }
 

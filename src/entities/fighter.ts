@@ -1,10 +1,10 @@
 import { Vec2 } from 'planck'
-import { Actor } from './actor'
+import { Entity } from './entity'
 import { Torso } from '../features/torso'
 import { Simulation } from '../simulation'
 import { Weapon } from './weapon'
 
-export class Fighter extends Actor {
+export class Fighter extends Entity {
   torso: Torso
   weapon: Weapon
   spawnPoint: Vec2

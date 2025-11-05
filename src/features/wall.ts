@@ -1,9 +1,9 @@
 import { Box, Vec2 } from 'planck'
 import { Feature } from './feature'
-import { Arena } from '../actors/arena'
+import { Arena } from '../entities/arena'
 
 export class Wall extends Feature {
-  environment: Arena
+  arena: Arena
   center: Vec2
   width: number
   height: number
@@ -19,7 +19,7 @@ export class Wall extends Feature {
     this.width = width
     this.height = height
     this.center = center
-    this.environment = environment
+    this.arena = environment
     this.label = 'platform'
   }
 }

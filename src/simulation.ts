@@ -1,9 +1,9 @@
 import { Vec2, World } from 'planck'
-import { Arena } from './actors/arena'
-import { Fighter } from './actors/fighter'
+import { Arena } from './entities/arena'
+import { Fighter } from './entities/fighter'
 import { Renderer } from './renderer'
 import { Input } from './input'
-import { Actor } from './actors/actor'
+import { Entity } from './entities/entity'
 import { normalize, randomDir } from './math'
 import { Collider } from './colllider'
 
@@ -15,8 +15,8 @@ export class Simulation {
   input: Input
   player?: Fighter
   time: number
-  actors = new Map<number, Actor>()
-  actorCount = 0
+  entities = new Map<number, Entity>()
+  entityCount = 0
   active = true
   timeScale = 1
   timeStep = 0.02
@@ -44,10 +44,10 @@ export class Simulation {
     if (!this.active) return
     const dt = this.timeScale * (this.time - oldTime) / 1000
     this.preStep(dt)
-    this.actors.forEach(actor => actor.preStep(dt))
-    this.actors.forEach(actor => actor.body.applyForce(actor.force, Vec2.zero()))
+    this.entities.forEach(entity => entity.preStep(dt))
+    this.entities.forEach(entity => entity.body.applyForce(entity.force, Vec2.zero()))
     this.world.step(dt)
-    this.actors.forEach(actor => actor.postStep(dt))
+    this.entities.forEach(entity => entity.postStep(dt))
     this.postStep(dt)
   }
 
@@ -56,8 +56,8 @@ export class Simulation {
   }
 
   postStep (dt: number): void {
-    const actors = [...this.actors.values()]
-    const fighters = actors.filter(a => a instanceof Fighter)
+    const entities = [...this.entities.values()]
+    const fighters = entities.filter(a => a instanceof Fighter)
     fighters.forEach(fighter => {
       if (fighter.dead) this.respawn(fighter)
     })

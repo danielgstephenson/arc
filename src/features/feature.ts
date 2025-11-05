@@ -1,14 +1,14 @@
 import { Fixture, FixtureDef } from 'planck'
-import { Actor } from '../actors/actor'
+import { Entity } from '../entities/entity'
 
 export class Feature {
-  actor: Actor
+  entity: Entity
   fixture: Fixture
   label = 'feature'
 
-  constructor (actor: Actor, fixtureDef: FixtureDef) {
-    this.actor = actor
-    this.fixture = this.actor.body.createFixture(fixtureDef)
+  constructor (entity: Entity, fixtureDef: FixtureDef) {
+    this.entity = entity
+    this.fixture = this.entity.body.createFixture(fixtureDef)
     this.fixture.setUserData(this)
   }
 }

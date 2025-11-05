@@ -1,6 +1,6 @@
 import { Circle } from 'planck'
 import { Feature } from './feature'
-import { Fighter } from '../actors/fighter'
+import { Fighter } from '../entities/fighter'
 
 export class Torso extends Feature {
   fighter: Fighter

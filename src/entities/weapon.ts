@@ -1,10 +1,10 @@
 import { Vec2 } from 'planck'
-import { Actor } from './actor'
+import { Entity } from './entity'
 import { Fighter } from './fighter'
 import { Blade } from '../features/blade'
 import { dirFromTo } from '../math'
 
-export class Weapon extends Actor {
+export class Weapon extends Entity {
   fighter: Fighter
   blade: Blade
   movePower = 4
