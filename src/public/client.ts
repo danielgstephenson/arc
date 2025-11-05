@@ -1,3 +1,3 @@
-import { Stage } from '../stage'
+import { Simulation } from '../simulation'
 
-void new Stage()
+void new Simulation()

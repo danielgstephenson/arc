@@ -1,17 +1,17 @@
 import { Contact, Vec2 } from 'planck'
 import { Feature } from './features/feature'
-import { Stage } from './stage'
+import { Simulation } from './simulation'
 import { Torso } from './features/torso'
 import { Blade } from './features/blade'
 
 export class Collider {
-  stage: Stage
+  simulation: Simulation
 
-  constructor (stage: Stage) {
-    this.stage = stage
-    this.stage.world.on('pre-solve', contact => this.preSolve(contact))
-    this.stage.world.on('begin-contact', contact => this.beginContact(contact))
-    this.stage.world.on('end-contact', contact => this.endContact(contact))
+  constructor (simulation: Simulation) {
+    this.simulation = simulation
+    this.simulation.world.on('pre-solve', contact => this.preSolve(contact))
+    this.simulation.world.on('begin-contact', contact => this.beginContact(contact))
+    this.simulation.world.on('end-contact', contact => this.endContact(contact))
   }
 
   beginContact (contact: Contact): void {}

@@ -1,14 +1,14 @@
 import { Vec2 } from 'planck'
-import { Stage } from './stage'
+import { Simulation } from './simulation'
 
 export class Input {
   keyboard = new Map<string, boolean>()
   mousePosition = new Vec2(0, 0)
   mouseButtons = new Map<number, boolean>()
-  stage: Stage
+  simulation: Simulation
 
-  constructor (stage: Stage) {
-    this.stage = stage
+  constructor (simulation: Simulation) {
+    this.simulation = simulation
     window.onkeydown = (event: KeyboardEvent) => this.onkeydown(event)
     window.onkeyup = (event: KeyboardEvent) => this.onkeyup(event)
     window.onwheel = (event: WheelEvent) => this.onwheel(event)
@@ -34,7 +34,7 @@ export class Input {
   }
 
   onwheel (event: WheelEvent): void {
-    this.stage.renderer.camera.adjustZoom(-0.002 * event.deltaY)
+    this.simulation.renderer.camera.adjustZoom(-0.002 * event.deltaY)
   }
 
   onmousemove (event: MouseEvent): void {

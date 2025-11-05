@@ -2,7 +2,7 @@ import { Vec2 } from 'planck'
 import { Arena } from './actors/arena'
 import { Fighter } from './actors/fighter'
 import { Camera } from './camera'
-import { Stage } from './stage'
+import { Simulation } from './simulation'
 import { Checker } from './checker'
 import { Boundary } from './features/boundary'
 import { Weapon } from './actors/weapon'
@@ -13,13 +13,13 @@ export class Renderer {
   checker = new Checker()
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
-  stage: Stage
+  simulation: Simulation
 
   backgroundColor = 'hsl(0,0%,0%)'
   wallColor = 'hsl(0,0%,35%)'
 
-  constructor (stage: Stage) {
-    this.stage = stage
+  constructor (simulation: Simulation) {
+    this.simulation = simulation
     this.canvas = document.getElementById('canvas') as HTMLCanvasElement
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D
     this.draw()
@@ -29,8 +29,8 @@ export class Renderer {
     window.requestAnimationFrame(() => this.draw())
     this.setupCanvas()
     this.followPlayer()
-    this.drawBoundary(this.stage.arena.boundary)
-    const actors = [...this.stage.actors.values()]
+    this.drawBoundary(this.simulation.arena.boundary)
+    const actors = [...this.simulation.actors.values()]
     const weapons = actors.filter(a => a instanceof Weapon)
     weapons.forEach(weapon => this.drawSpring(weapon))
     weapons.forEach(weapon => this.drawBlade(weapon))
@@ -101,11 +101,11 @@ export class Renderer {
   }
 
   followPlayer (): void {
-    if (this.stage.player == null) {
+    if (this.simulation.player == null) {
       this.camera.position = Vec2.zero()
       return
     }
-    this.camera.position = this.stage.player.body.getWorldCenter()
+    this.camera.position = this.simulation.player.body.getWorldCenter()
   }
 
   setupCanvas (): void {

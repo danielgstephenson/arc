@@ -7,7 +7,7 @@ import { Actor } from './actors/actor'
 import { normalize, randomDir } from './math'
 import { Collider } from './colllider'
 
-export class Stage {
+export class Simulation {
   world: World
   renderer: Renderer
   collider: Collider
@@ -27,8 +27,11 @@ export class Stage {
     this.input = new Input(this)
     this.time = performance.now()
     this.arena = new Arena(this)
-    this.player = new Fighter(this, new Vec2(0, +10))
+    const player = new Fighter(this, new Vec2(0, +10))
+    this.respawn(player)
+    this.player = player
     const enemy = new Fighter(this, new Vec2(0, -10))
+    this.respawn(enemy)
     enemy.color = 'hsl(120, 100%, 25%)'
     enemy.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
     this.renderer = new Renderer(this)

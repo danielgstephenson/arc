@@ -1,15 +1,15 @@
 import { Vec2 } from 'planck'
 import { Actor } from './actor'
 import { Wall } from '../features/wall'
-import { Stage } from '../stage'
+import { Simulation } from '../simulation'
 import { Boundary } from '../features/boundary'
 
 export class Arena extends Actor {
   boundary: Boundary
   walls: Wall[] = []
 
-  constructor (stage: Stage) {
-    super(stage, {
+  constructor (simulation: Simulation) {
+    super(simulation, {
       type: 'static'
     })
     this.label = 'arena'

@@ -1,20 +1,20 @@
 import { Body, BodyDef, Fixture, Vec2 } from 'planck'
-import { Stage } from '../stage'
+import { Simulation } from '../simulation'
 
 export class Actor {
-  stage: Stage
+  simulation: Simulation
   id: number
   body: Body
   force = Vec2.zero()
   label = 'actor'
   removed = false
 
-  constructor (stage: Stage, bodyDef: BodyDef) {
-    this.stage = stage
-    this.stage.actorCount += 1
-    this.id = stage.actorCount
-    this.stage.actors.set(this.id, this)
-    this.body = this.stage.world.createBody(bodyDef)
+  constructor (simulation: Simulation, bodyDef: BodyDef) {
+    this.simulation = simulation
+    this.simulation.actorCount += 1
+    this.id = simulation.actorCount
+    this.simulation.actors.set(this.id, this)
+    this.body = this.simulation.world.createBody(bodyDef)
     this.body.setUserData(this)
   }
 
@@ -30,8 +30,8 @@ export class Actor {
 
   postStep (dt: number): void {
     if (this.removed) {
-      this.stage.world.destroyBody(this.body)
-      this.stage.actors.delete(this.id)
+      this.simulation.world.destroyBody(this.body)
+      this.simulation.actors.delete(this.id)
     }
   }
 

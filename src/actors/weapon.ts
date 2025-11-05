@@ -12,7 +12,7 @@ export class Weapon extends Actor {
   color = 'hsla(220, 50%, 40%, 0.5)'
 
   constructor (fighter: Fighter) {
-    super(fighter.stage, {
+    super(fighter.simulation, {
       type: 'dynamic',
       bullet: true,
       linearDamping: 0.3,

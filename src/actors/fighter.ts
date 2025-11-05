@@ -1,7 +1,7 @@
 import { Vec2 } from 'planck'
 import { Actor } from './actor'
 import { Torso } from '../features/torso'
-import { Stage } from '../stage'
+import { Simulation } from '../simulation'
 import { Weapon } from './weapon'
 
 export class Fighter extends Actor {
@@ -14,8 +14,8 @@ export class Fighter extends Actor {
   color = 'hsl(220,100%,40%)'
   dead = false
 
-  constructor (stage: Stage, position: Vec2) {
-    super(stage, {
+  constructor (simulation: Simulation, position: Vec2) {
+    super(simulation, {
       type: 'dynamic',
       bullet: true,
       linearDamping: 0.7,
