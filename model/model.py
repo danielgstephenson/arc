@@ -1,12 +1,25 @@
+import asyncio
 import socketio
 
-print('model')
-
-sio = socketio.Client()
+sio = socketio.AsyncClient(handle_sigint=False)
 
 @sio.event
-def connected():
+async def connect():
 	print('connected')
 
-sio.connect('http://localhost:3000')
-sio.wait()
+@sio.event
+async def disconnect():
+    print('disconnected from server')
+    
+async def main():
+	try:
+		await sio.connect('http://localhost:3000', wait=True)
+		await sio.wait()
+	except asyncio.CancelledError:
+		await sio.disconnect()
+		print('Shutdown Complete')
+
+try:
+	asyncio.run(main())
+except KeyboardInterrupt:
+	print('KeyboardInterrupt')

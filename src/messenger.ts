@@ -30,6 +30,9 @@ export class Messenger {
         this.simulation.playerForce = Vec2.mul(Fighter.movePower, moveDir)
         socket.emit('summary', this.simulation.summary)
       })
+      socket.on('disconnect', () => {
+        console.log(socket.id, 'disconnected')
+      })
     })
   }
 }
