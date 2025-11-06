@@ -3,18 +3,17 @@ import { Feature } from './feature'
 import { Weapon } from '../entities/weapon'
 
 export class Blade extends Feature {
+  static radius = 1
   weapon: Weapon
-  radius: number
   alive = true
 
-  constructor (weapon: Weapon, radius = 1) {
+  constructor (weapon: Weapon) {
     super(weapon, {
-      shape: new Circle(radius),
+      shape: new Circle(Blade.radius),
       density: 1,
       friction: 0,
       restitution: 0
     })
-    this.radius = radius
     this.weapon = weapon
     this.label = 'torso'
   }

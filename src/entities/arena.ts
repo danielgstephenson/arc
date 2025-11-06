@@ -1,12 +1,11 @@
 import { Vec2 } from 'planck'
 import { Entity } from './entity'
-import { Wall } from '../features/wall'
 import { Simulation } from '../simulation'
 import { Boundary } from '../features/boundary'
+import { ArenaSummary } from '../summaries'
 
 export class Arena extends Entity {
   boundary: Boundary
-  walls: Wall[] = []
 
   constructor (simulation: Simulation) {
     super(simulation, {
@@ -22,8 +21,9 @@ export class Arena extends Entity {
     ])
   }
 
-  addWall (width: number, height: number, center: Vec2): void {
-    const wall = new Wall(this, width, height, center)
-    this.walls.push(wall)
+  summarize (): ArenaSummary {
+    return {
+      boundary: this.boundary.vertices
+    }
   }
 }

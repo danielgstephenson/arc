@@ -1,25 +1,26 @@
 import { Vec2 } from 'planck'
-import { Arena } from './entities/arena'
-import { Fighter } from './entities/fighter'
 import { Camera } from './camera'
-import { Simulation } from './simulation'
 import { Checker } from './checker'
-import { Boundary } from './features/boundary'
-import { Weapon } from './entities/weapon'
 import { dirFromTo } from './math'
+import { Torso } from './features/torso'
+import { Blade } from './features/blade'
+import { ArenaSummary, FighterSummary, SimulationSummary } from './summaries'
 
 export class Renderer {
   camera = new Camera()
   checker = new Checker()
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
-  simulation: Simulation
+  summary: SimulationSummary
 
   backgroundColor = 'hsl(0,0%,0%)'
   wallColor = 'hsl(0,0%,35%)'
 
-  constructor (simulation: Simulation) {
-    this.simulation = simulation
+  constructor () {
+    this.summary = {
+      arena: { boundary: [] },
+      fighters: []
+    }
     this.canvas = document.getElementById('canvas') as HTMLCanvasElement
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D
     this.draw()
@@ -29,83 +30,72 @@ export class Renderer {
     window.requestAnimationFrame(() => this.draw())
     this.setupCanvas()
     this.followPlayer()
-    this.drawBoundary(this.simulation.arena.boundary)
-    const entities = [...this.simulation.entities.values()]
-    const weapons = entities.filter(a => a instanceof Weapon)
-    weapons.forEach(weapon => this.drawSpring(weapon))
-    weapons.forEach(weapon => this.drawBlade(weapon))
-    const fighters = entities.filter(a => a instanceof Fighter)
-    fighters.forEach(fighter => this.drawTorso(fighter))
-    const environments = entities.filter(a => a instanceof Arena)
-    environments.forEach(environment => this.drawWalls(environment))
+    this.drawArena(this.summary.arena)
+    this.summary.fighters.forEach(fighter => this.drawSpring(fighter))
+    this.summary.fighters.forEach(fighter => this.drawBlade(fighter))
+    this.summary.fighters.forEach(fighter => this.drawTorso(fighter))
   }
 
-  drawBoundary (boundary: Boundary): void {
+  drawArena (arena: ArenaSummary): void {
+    const boundary = arena.boundary
     this.context.fillStyle = this.backgroundColor
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
     this.resetContext()
     this.context.imageSmoothingEnabled = false
     this.context.fillStyle = this.checker.pattern
     this.context.beginPath()
-    boundary.vertices.forEach((vertex, i) => {
+    boundary.forEach((vertex, i) => {
       if (i === 0) this.context.moveTo(vertex.x, vertex.y)
       else this.context.lineTo(vertex.x, vertex.y)
     })
     this.context.fill()
-  }
-
-  drawSpring (weapon: Weapon): void {
-    this.resetContext()
-    this.context.strokeStyle = 'hsla(0, 100%, 100%, 0.1)'
-    this.context.lineWidth = 0.08
-    const bladePoint = weapon.body.getWorldCenter()
-    const torsoPoint = weapon.fighter.body.getWorldCenter()
-    const distance = Vec2.distance(bladePoint, torsoPoint)
-    const bladeRadius = weapon.blade.radius
-    const torsoRadius = weapon.fighter.torso.radius
-    if (distance < bladeRadius + torsoRadius) return
-    const dir = dirFromTo(bladePoint, torsoPoint)
-    const edgePoint = Vec2.combine(1, bladePoint, bladeRadius, dir)
+    this.context.strokeStyle = 'hsla(0, 0%, 20%, 1)'
+    this.context.lineWidth = 0.05
     this.context.beginPath()
-    this.context.moveTo(edgePoint.x, edgePoint.y)
-    this.context.lineTo(torsoPoint.x, torsoPoint.y)
+    this.context.arc(0, 0, 10, 0, 2 * Math.PI)
+    this.context.moveTo(0, 20)
+    this.context.lineTo(0, -20)
+    this.context.moveTo(20, 0)
+    this.context.lineTo(-20, 0)
     this.context.stroke()
   }
 
-  drawBlade (weapon: Weapon): void {
+  drawSpring (fighter: FighterSummary): void {
     this.resetContext()
-    this.context.fillStyle = weapon.color
-    const center = weapon.body.getWorldCenter()
+    this.context.strokeStyle = 'hsla(0, 100%, 100%, 0.1)'
+    this.context.lineWidth = 0.08
+    const distance = Vec2.distance(fighter.weapon, fighter.torso)
+    if (distance < Blade.radius + Torso.radius) return
+    const dir = dirFromTo(fighter.weapon, fighter.torso)
+    const edgePoint = Vec2.combine(1, fighter.weapon, Blade.radius, dir)
     this.context.beginPath()
-    this.context.arc(center.x, center.y, weapon.blade.radius, 0, 2 * Math.PI)
+    this.context.moveTo(edgePoint.x, edgePoint.y)
+    this.context.lineTo(fighter.torso.x, fighter.torso.y)
+    this.context.stroke()
+  }
+
+  drawBlade (fighter: FighterSummary): void {
+    this.resetContext()
+    this.context.fillStyle = fighter.weaponColor
+    this.context.beginPath()
+    this.context.arc(fighter.weapon.x, fighter.weapon.y, Blade.radius, 0, 2 * Math.PI)
     this.context.fill()
   }
 
-  drawTorso (fighter: Fighter): void {
+  drawTorso (fighter: FighterSummary): void {
     this.resetContext()
-    this.context.fillStyle = fighter.color
-    const center = fighter.body.getWorldCenter()
+    this.context.fillStyle = fighter.torsoColor
     this.context.beginPath()
-    this.context.arc(center.x, center.y, fighter.torso.radius, 0, 2 * Math.PI)
+    this.context.arc(fighter.torso.x, fighter.torso.y, Torso.radius, 0, 2 * Math.PI)
     this.context.fill()
-  }
-
-  drawWalls (environment: Arena): void {
-    environment.walls.forEach(wall => {
-      this.resetContext()
-      this.context.fillStyle = this.wallColor
-      const x = wall.center.x - 0.5 * wall.width
-      const y = wall.center.y - 0.5 * wall.height
-      this.context.fillRect(x, y, wall.width, wall.height)
-    })
   }
 
   followPlayer (): void {
-    if (this.simulation.player == null) {
+    if (this.summary.player == null) {
       this.camera.position = Vec2.zero()
       return
     }
-    this.camera.position = this.simulation.player.body.getWorldCenter()
+    this.camera.position = this.summary.player
   }
 
   setupCanvas (): void {

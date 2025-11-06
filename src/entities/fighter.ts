@@ -3,13 +3,14 @@ import { Entity } from './entity'
 import { Torso } from '../features/torso'
 import { Simulation } from '../simulation'
 import { Weapon } from './weapon'
+import { FighterSummary } from '../summaries'
 
 export class Fighter extends Entity {
+  static movePower = 4
   torso: Torso
   weapon: Weapon
   spawnPoint: Vec2
   deathPoint: Vec2
-  movePower = 4
   moveDir = new Vec2(0, 0)
   color = 'hsl(220,100%,40%)'
   dead = false
@@ -27,5 +28,20 @@ export class Fighter extends Entity {
     this.deathPoint = position
     this.torso = new Torso(this)
     this.weapon = new Weapon(this)
+    this.simulation.fighters.set(this.id, this)
+  }
+
+  summarize (): FighterSummary {
+    return {
+      torso: this.body.getPosition(),
+      weapon: this.weapon.body.getPosition(),
+      torsoColor: this.color,
+      weaponColor: this.weapon.color
+    }
+  }
+
+  remove (): void {
+    super.remove()
+    this.simulation.fighters.delete(this.id)
   }
 }

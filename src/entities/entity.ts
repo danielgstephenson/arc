@@ -31,11 +31,11 @@ export class Entity {
   postStep (dt: number): void {
     if (this.removed) {
       this.simulation.world.destroyBody(this.body)
-      this.simulation.entities.delete(this.id)
     }
   }
 
   remove (): void {
     this.removed = true
+    this.simulation.entities.delete(this.id)
   }
 }

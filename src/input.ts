@@ -1,14 +1,15 @@
 import { Vec2 } from 'planck'
-import { Simulation } from './simulation'
+import { clamp } from './math'
 
 export class Input {
   keyboard = new Map<string, boolean>()
   mousePosition = new Vec2(0, 0)
   mouseButtons = new Map<number, boolean>()
-  simulation: Simulation
+  maxZoom = 15
+  minZoom = -10
+  zoom = 0
 
-  constructor (simulation: Simulation) {
-    this.simulation = simulation
+  constructor () {
     window.onkeydown = (event: KeyboardEvent) => this.onkeydown(event)
     window.onkeyup = (event: KeyboardEvent) => this.onkeyup(event)
     window.onwheel = (event: WheelEvent) => this.onwheel(event)
@@ -34,7 +35,8 @@ export class Input {
   }
 
   onwheel (event: WheelEvent): void {
-    this.simulation.renderer.camera.adjustZoom(-0.002 * event.deltaY)
+    const change = -0.002 * event.deltaY
+    this.zoom = clamp(this.minZoom, this.maxZoom, this.zoom + change)
   }
 
   onmousemove (event: MouseEvent): void {

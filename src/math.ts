@@ -9,7 +9,7 @@ export function range (a: number, b: number): number[] {
 }
 
 export function normalize (vector: Vec2): Vec2 {
-  const normalized = vector.clone()
+  const normalized = new Vec2(vector.x, vector.y)
   normalized.normalize()
   return normalized
 }
