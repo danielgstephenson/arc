@@ -4,8 +4,31 @@ export const pi = Math.PI
 
 export const twoPi = 2 * pi
 
-export function range (a: number, b: number): number[] {
+export function range (a: number, b?: number): number[] {
+  if (b == null) return range(0, a - 1)
   return [...Array(b - a + 1).keys()].map(i => a + i)
+}
+
+export function sample<T> (options: T[]): T {
+  return options[Math.floor(Math.random() * options.length)]
+}
+
+export function sum (array: number[]): number {
+  let total = 0
+  array.forEach(x => { total = total + x })
+  return total
+}
+
+export function dot (x: number[], y: number[]): number {
+  if (x.length !== y.length) {
+    throw new Error('x and y must have the same length')
+  }
+  const products = x.map((_, i) => x[i] * y[i])
+  return sum(products)
+}
+
+export function relu (x: number): number {
+  return x > 0 ? x : 0
 }
 
 export function normalize (vector: Vec2): Vec2 {
@@ -83,10 +106,6 @@ export function whichMax (array: number[]): number {
 export function whichMin (array: number[]): number {
   const negArray = array.map(x => -x)
   return whichMax(negArray)
-}
-
-export function choose<type> (array: type[]): type {
-  return array[Math.floor(Math.random() * array.length)]
 }
 
 export function project (a: Vec2, b: Vec2): Vec2 {
