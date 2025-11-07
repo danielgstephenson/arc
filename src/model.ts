@@ -12,10 +12,13 @@ export class Model {
       const weight = this.weight[L]
       const n = bias.length
       const layer = range(n).map(i => {
-        return relu(bias[i] + dot(weight[i], input))
+        const linear = bias[i] + dot(weight[i], input)
+        if (L === 4) return (linear)
+        return relu(linear)
       })
       layers.push(layer)
     })
+    console.log('layers', layers)
     return layers[4][0]
   }
 

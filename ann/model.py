@@ -7,6 +7,7 @@ import torch
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
 torch.set_default_device(device)
+torch.set_default_dtype(torch.float64)
 
 n0 = 8 # input size 
 n1 = 100 # first hidden layer size
@@ -26,7 +27,7 @@ class Core(torch.nn.Module):
 		layer1 = self.activation(self.h1(state))
 		layer2 = self.activation(self.h2(layer1))
 		layer3 = self.activation(self.h3(layer2))
-		output = self.activation(self.out(layer3))
+		output = self.out(layer3)
 		return output
 
 class Evaluator(torch.nn.Module):
@@ -60,7 +61,7 @@ torch.save(model.state_dict(),'checkpoint.pt')
 states = torch.tensor([
 	[1,1,1,1,2,2,2,2],
 	[2,2,2,2,1,1,1,1]
-], dtype=torch.float)
+], dtype=torch.float64)
 values = model.forward(states)
 print('values',values.cpu().tolist())
 
