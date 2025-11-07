@@ -50,7 +50,7 @@ export function vecToAngle (vector: Vec2): number {
 }
 
 export function angleToDir (angle: number): Vec2 {
-  return Vec2(Math.cos(angle), Math.sin(angle))
+  return new Vec2(Math.cos(angle), Math.sin(angle))
 }
 
 export function getAngleDiff (toAngle: number, fromAngle: number): number {

@@ -3,6 +3,7 @@ import socketio
 import os
 print('importing torch...')
 import torch
+import torch.nn.functional as F
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
@@ -13,7 +14,6 @@ n0 = 8 # input size
 n1 = 100 # first hidden layer size
 n2 = 100 # second hidden layer size
 n3 = 100 # third hidden layer size
-
 
 class Core(torch.nn.Module):
 	def __init__(self, *args, **kwargs):
@@ -58,12 +58,24 @@ if os.path.exists('checkpoint.pt'):
 	checkpoint = torch.load('checkpoint.pt')
 	model.load_state_dict(checkpoint)
 torch.save(model.state_dict(),'checkpoint.pt')
-states = torch.tensor([
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+
+def learn(states: torch.Tensor, values: torch.Tensor):
+	model.train()
+	optimizer.zero_grad()
+	predictions = model(states)
+	loss = F.mse_loss(predictions, values)
+	loss.backward()
+	optimizer.step()
+	return loss.item()
+
+test_states = torch.tensor([
 	[1,1,1,1,2,2,2,2],
 	[2,2,2,2,1,1,1,1]
 ], dtype=torch.float64)
-values = model.forward(states)
-print('values',values.cpu().tolist())
+test_values = model.forward(test_states)
+print('values',test_values.cpu().tolist())
 
 sio = socketio.AsyncClient(handle_sigint=False)
 
@@ -71,6 +83,14 @@ sio = socketio.AsyncClient(handle_sigint=False)
 async def connect():
 	print('connected')
 	await sio.emit('parameters',model.serialize())
+
+@sio.event
+async def observe(data):
+	states = torch.tensor([data['state']])
+	values = torch.tensor([data['value']])
+	learn(states, values)
+	await sio.emit('parameters',model.serialize())
+
 
 @sio.event
 async def disconnect():
