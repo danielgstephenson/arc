@@ -9,9 +9,9 @@ print("device = " + str(device))
 torch.set_default_device(device)
 
 n0 = 8 # input size 
-n1 = 5 # first hidden layer size
-n2 = 5 # second hidden layer size
-n3 = 5 # third hidden layer size
+n1 = 100 # first hidden layer size
+n2 = 100 # second hidden layer size
+n3 = 100 # third hidden layer size
 
 
 class Core(torch.nn.Module):
