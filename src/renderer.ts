@@ -5,6 +5,7 @@ import { dirFromTo } from './math'
 import { Torso } from './features/torso'
 import { Blade } from './features/blade'
 import { ArenaSummary, FighterSummary, SimulationSummary } from './summaries'
+import { Arena } from './entities/arena'
 
 export class Renderer {
   camera = new Camera()
@@ -53,10 +54,10 @@ export class Renderer {
     this.context.lineWidth = 0.05
     this.context.beginPath()
     this.context.arc(0, 0, 10, 0, 2 * Math.PI)
-    this.context.moveTo(0, 20)
-    this.context.lineTo(0, -20)
-    this.context.moveTo(20, 0)
-    this.context.lineTo(-20, 0)
+    this.context.moveTo(0, Arena.size)
+    this.context.lineTo(0, -Arena.size)
+    this.context.moveTo(Arena.size, 0)
+    this.context.lineTo(-Arena.size, 0)
     this.context.stroke()
   }
 

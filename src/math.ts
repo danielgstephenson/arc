@@ -31,6 +31,10 @@ export function relu (x: number): number {
   return x > 0 ? x : 0
 }
 
+export function leakyRelu (x: number): number {
+  return x > 0 ? x : 0.01 * x
+}
+
 export function normalize (vector: Vec2): Vec2 {
   const normalized = new Vec2(vector.x, vector.y)
   normalized.normalize()

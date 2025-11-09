@@ -31,6 +31,9 @@ export class Messenger {
         this.simulation.model.weight = parameters.weight as number[][][]
         this.simulation.model.bias = parameters.bias as number[][]
         this.simulation.ann = socket
+        // const testState = range(16)
+        // const testValue = this.simulation.model.evaluate(testState)
+        // console.log('test_value', testValue)
       })
     })
   }

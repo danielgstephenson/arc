@@ -6,7 +6,7 @@ export class Input {
   mousePosition = new Vec2(0, 0)
   mouseButtons = new Map<number, boolean>()
   maxZoom = 15
-  minZoom = -10
+  minZoom = -100
   zoom = 0
 
   constructor () {

@@ -4,13 +4,14 @@ import { Fighter } from './entities/fighter'
 import { Entity } from './entities/entity'
 import { Collider } from './colllider'
 import { SimulationSummary } from './summaries'
-import { randomDir } from './math'
+import { randomDir, range } from './math'
 import { Model } from './model'
 import { DefaultEventsMap, Socket } from 'socket.io'
+import { Blade } from './features/blade'
 
 export class Simulation {
-  static timeScale = 1
-  static timeStep = 0.02
+  static timeScale = 2
+  static timeStep = 0.04
   world = new World()
   model = new Model()
   collider: Collider
@@ -21,9 +22,9 @@ export class Simulation {
   fighters = new Map<number, Fighter>()
   entityCount = 0
   active = true
-  oldState = [0, 0, 0, 0, 0, 0, 0, 0]
-  oldPayoff = 0
-  newState = [0, 0, 0, 0, 0, 0, 0, 0]
+  oldState = range(16).map(_ => 0)
+  oldReward = 0
+  newState = range(16).map(_ => 0)
   player?: Fighter
   ann?: Socket<DefaultEventsMap, DefaultEventsMap, DefaultEventsMap, any>
 
@@ -38,7 +39,8 @@ export class Simulation {
     fighter1.color = 'hsl(120, 100%, 25%)'
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
     this.summary = this.summarize()
-    setInterval(() => this.step(), 1000 * Simulation.timeStep)
+    setInterval(() => this.step(), 1000 * Simulation.timeStep / Simulation.timeScale)
+    // this.player = fighter1
   }
 
   step (): void {
@@ -59,20 +61,21 @@ export class Simulation {
     this.act()
     const fighters = [...this.fighters.values()]
     this.oldState = this.model.getState(fighters[0], fighters[1])
-    this.oldPayoff = this.model.objective(fighters[0], fighters[1])
-    const p0 = fighters[0].body.getPosition()
-    const p1 = fighters[1].body.getPosition()
-    const distance0 = Vec2.lengthOf(p0)
-    const distance1 = Vec2.lengthOf(p1)
-    console.log('payoff', distance1.toFixed(4), distance0.toFixed(4), this.oldPayoff.toFixed(4))
+    this.oldReward = this.model.getReward(fighters[0], fighters[1])
+    const value = this.model.evaluate(this.oldState)
+    console.log('value', value)
   }
 
   act (): void {
     const fighters = [...this.fighters.values()]
-    const state0 = this.model.getState(fighters[0], fighters[1])
-    const state1 = this.model.getState(fighters[1], fighters[0])
-    fighters[0].action = this.model.getAction(state0)
-    fighters[1].action = this.model.getAction(state1)
+    if (fighters[0] !== this.player) {
+      const state0 = this.model.getState(fighters[0], fighters[1])
+      fighters[0].action = this.model.getAction(state0)
+    }
+    if (fighters[1] !== this.player) {
+      const state1 = this.model.getState(fighters[1], fighters[0])
+      fighters[1].action = this.model.getAction(state1)
+    }
   }
 
   postStep (dt: number): void {
@@ -81,26 +84,34 @@ export class Simulation {
       if (fighter.dead) this.respawn(fighter)
     })
     this.newState = this.model.getState(fighters[0], fighters[1])
-    // this.sendData()
+    this.sendData(dt)
+    if (Math.random() < 0.04 * Simulation.timeStep) {
+      this.restart()
+    }
   }
 
-  sendData (): void {
+  sendData (dt: number): void {
     if (this.ann == null) return
-    const dt = Simulation.timeStep
-    const discount = dt * Model.discount
     const state = this.oldState
     const nextValue = this.model.evaluate(this.newState)
-    const value = dt * this.oldPayoff + (1 - discount) * nextValue
+    const A = dt * Model.discount / (1 + Model.discount)
+    const value = (1 - A) * this.oldReward + A * nextValue
     this.ann.emit('observe', { state, value })
   }
 
   respawn (fighter: Fighter): void {
-    fighter.spawnPoint = Vec2.mul(12, randomDir())
+    fighter.spawnPoint = Vec2.mul(Arena.size - Blade.radius, randomDir())
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)
     fighter.body.setLinearVelocity(Vec2.zero())
     fighter.weapon.body.setLinearVelocity(Vec2.zero())
     fighter.dead = false
+  }
+
+  restart (): void {
+    this.fighters.forEach(fighter => {
+      this.respawn(fighter)
+    })
   }
 
   summarize (): SimulationSummary {
