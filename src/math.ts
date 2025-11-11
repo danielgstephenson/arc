@@ -19,6 +19,11 @@ export function sum (array: number[]): number {
   return total
 }
 
+export function average (array: number[]): number {
+  if (array.length === 0) return 0
+  return sum(array) / array.length
+}
+
 export function dot (x: number[], y: number[]): number {
   if (x.length !== y.length) {
     throw new Error('x and y must have the same length')

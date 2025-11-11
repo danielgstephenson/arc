@@ -34,26 +34,30 @@ class Evaluator(torch.nn.Module):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.core = Core()
-		self.flip = [8, 9,10,11,12,13,14,15,0, 1, 2, 3, 4, 5, 6, 7]
+		self.flipFighters = [8, 9,10,11,12,13,14,15,0, 1, 2, 3, 4, 5, 6, 7]
+		self.flipXY = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14]
+		self.flipFighters = [8, 9,10,11,12,13,14,15,0, 1, 2, 3, 4, 5, 6, 7]
 		self.negX = torch.tensor([(-1)**(i+1) for i in range(16)])
 		self.negY = torch.tensor([(-1)**i for i in range(16)])
-		self.negXY = torch.tensor([-1 for _ in range(16)])
+		self.neg = torch.tensor([-1 for _ in range(16)])
 		self.ready = True
 		self.state_list = []
 		self.value_list = []
 	def forward(self,state: torch.Tensor) -> torch.Tensor:
-		s0 = state
-		s1 = state * self.negX
-		s2 = state * self.negY
-		s3 = state * self.negXY
-		output = self.base(s0) + self.base(s1) + self.base(s2) + self.base(s3)
-		return output
+		b0 = self.base(state)
+		b1 = self.base(state * self.negX)
+		b2 = self.base(state * self.negY)
+		b3 = self.base(state * self.neg)
+		b4 = self.base(state[:, self.flipXY])
+		b5 = self.base(state[:, self.flipXY] * self.negX)
+		b6 = self.base(state[:, self.flipXY] * self.negY)
+		b7 = self.base(state[:, self.flipXY] * self.neg)
+		return (b0+b1+b2+b3+b4+b5+b6+b7) / 8
 	def base(self,state: torch.Tensor) -> torch.Tensor:
 		s0 = state
-		s1 = state[:,self.flip]
+		s1 = state[:,self.flipFighters]
 		result = self.core(s0) - self.core(s1)
-		output = result.squeeze(1) if result.dim() > 1 else state
-		return output
+		return result.squeeze(1) if result.dim() > 1 else state
 	def serialize(self):
 		state_dict = self.state_dict()
 		weight = [

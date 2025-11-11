@@ -5,7 +5,7 @@ import { Boundary } from '../features/boundary'
 import { ArenaSummary } from '../summaries'
 
 export class Arena extends Entity {
-  static size = 30
+  static size = 90000
   boundary: Boundary
 
   constructor (simulation: Simulation) {

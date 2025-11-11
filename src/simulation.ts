@@ -10,7 +10,7 @@ import { DefaultEventsMap, Socket } from 'socket.io'
 import { Blade } from './features/blade'
 
 export class Simulation {
-  static timeScale = 2
+  static timeScale = 1
   static timeStep = 0.04
   world = new World()
   model = new Model()
@@ -33,14 +33,14 @@ export class Simulation {
     this.arena = new Arena(this)
     this.time = performance.now()
     const fighter0 = new Fighter(this, new Vec2(0, +10))
-    this.respawn(fighter0)
     const fighter1 = new Fighter(this, new Vec2(0, -10))
-    this.respawn(fighter1)
+    fighter0.color = 'hsl(220,100%,40%)'
+    fighter0.weapon.color = 'hsla(220, 50%, 40%, 0.5)'
+    this.restart()
     fighter1.color = 'hsl(120, 100%, 25%)'
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
     this.summary = this.summarize()
     setInterval(() => this.step(), 1000 * Simulation.timeStep / Simulation.timeScale)
-    // this.player = fighter1
   }
 
   step (): void {
@@ -61,20 +61,24 @@ export class Simulation {
     this.act()
     const fighters = [...this.fighters.values()]
     this.oldState = this.model.getState(fighters[0], fighters[1])
-    this.oldReward = this.model.getReward(fighters[0], fighters[1])
-    const value = this.model.evaluate(this.oldState)
-    console.log('value', value)
+    this.oldReward = this.model.getReward(this.oldState)
+    const reward = this.oldReward.toFixed(2)
+    const value = this.model.evaluate(this.oldState).toFixed(2)
+    const score = this.model.getScore(this.oldState).toFixed(2)
+    const otherState = this.model.flipFighters(this.oldState)
+    const otherScore = this.model.getScore(otherState).toFixed(2)
+    console.log('scores', score, otherScore, reward, value)
   }
 
   act (): void {
     const fighters = [...this.fighters.values()]
     if (fighters[0] !== this.player) {
-      const state0 = this.model.getState(fighters[0], fighters[1])
-      fighters[0].action = this.model.getAction(state0)
+      const state = this.model.getState(fighters[0], fighters[1])
+      fighters[0].action = this.model.getAction(state)
     }
     if (fighters[1] !== this.player) {
-      const state1 = this.model.getState(fighters[1], fighters[0])
-      fighters[1].action = this.model.getAction(state1)
+      const state = this.model.getState(fighters[1], fighters[0])
+      fighters[1].action = this.model.getAction(state)
     }
   }
 
@@ -85,7 +89,7 @@ export class Simulation {
     })
     this.newState = this.model.getState(fighters[0], fighters[1])
     this.sendData(dt)
-    if (Math.random() < 0.04 * Simulation.timeStep) {
+    if (Math.random() < 0.0001 * Simulation.timeStep) {
       this.restart()
     }
   }
@@ -94,13 +98,14 @@ export class Simulation {
     if (this.ann == null) return
     const state = this.oldState
     const nextValue = this.model.evaluate(this.newState)
-    const A = dt * Model.discount / (1 + Model.discount)
-    const value = (1 - A) * this.oldReward + A * nextValue
+    const A = dt * Model.discount
+    const value = A * this.oldReward + (1 - A) * nextValue
     this.ann.emit('observe', { state, value })
   }
 
   respawn (fighter: Fighter): void {
-    fighter.spawnPoint = Vec2.mul(Arena.size - Blade.radius, randomDir())
+    const spawnRadius = Math.min(30, Arena.size) - Blade.radius
+    fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)
     fighter.body.setLinearVelocity(Vec2.zero())
@@ -109,8 +114,10 @@ export class Simulation {
   }
 
   restart (): void {
-    this.fighters.forEach(fighter => {
+    const fighters = [...this.fighters.values()]
+    fighters.forEach(fighter => {
       this.respawn(fighter)
+      // this.player = fighters[0]
     })
   }
 

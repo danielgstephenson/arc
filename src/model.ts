@@ -1,17 +1,18 @@
 import { Vec2 } from 'planck'
-import { angleToDir, dot, leakyRelu, range, sample, twoPi } from './math'
+import { angleToDir, average, dirFromTo, dot, leakyRelu, range, sample, twoPi } from './math'
 import { Fighter } from './entities/fighter'
 import { Simulation } from './simulation'
 
 export class Model {
-  static noise = 0.01
-  static discount = 0.03
+  static noise = 0.1
+  static discount = 0.2
   weight: number[][][] = []
   bias: number[][] = []
   options: Vec2[] = []
+  flipFightersIndices = [...range(8, 15), ...range(0, 7)]
+  flipXY = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14]
   negX = range(16).map(i => (-1) ** (i + 1))
   negY = range(16).map(i => (-1) ** (i))
-  negXY = range(16).map(i => -1)
 
   constructor () {
     this.options.push(Vec2.zero())
@@ -41,32 +42,40 @@ export class Model {
   }
 
   evaluate (state: number[]): number {
-    const s0 = state
-    const s1 = range(16).map(i => state[i] * this.negX[i])
-    const s2 = range(16).map(i => state[i] * this.negY[i])
-    const s3 = range(16).map(i => state[i] * this.negXY[i])
-    return this.base(s0) + this.base(s1) + this.base(s2) + this.base(s3)
+    const states: number[][] = []
+    states[0] = state
+    states[1] = range(16).map(i => state[i] * this.negX[i])
+    states[2] = range(16).map(i => state[i] * this.negY[i])
+    states[3] = range(16).map(i => state[i] * -1)
+    states[4] = this.flipXY.map(i => state[i])
+    states[5] = this.flipXY.map(i => state[i] * this.negX[i])
+    states[6] = this.flipXY.map(i => state[i] * this.negY[i])
+    states[7] = this.flipXY.map(i => state[i] * -1)
+    const baseValues = states.map(s => this.base(s))
+    return average(baseValues)
   }
 
   base (state: number[]): number {
     const state0 = state
-    const state1 = this.flip(state)
+    const state1 = this.flipFighters(state)
     return this.core(state0) - this.core(state1)
   }
 
-  getReward (fighter0: Fighter, fighter1: Fighter): number {
-    const fp0 = fighter0.body.getPosition()
-    const fp1 = fighter1.body.getPosition()
-    const fv0 = fighter0.body.getLinearVelocity()
-    const fv1 = fighter1.body.getLinearVelocity()
-    const wv0 = fighter0.weapon.body.getLinearVelocity()
-    const wv1 = fighter1.weapon.body.getLinearVelocity()
-    const dist0 = Vec2.lengthOf(fp0)
-    const dist1 = Vec2.lengthOf(fp1)
-    const swing0 = Vec2.distance(wv0, fv0)
-    const swing1 = Vec2.distance(wv1, fv1)
-    const C = 10
-    return C * (dist1 / C) ** 2 - C * (dist0 / C) ** 2 + 0.01 * (swing0 - swing1)
+  getScore (state: number[]): number {
+    const position = new Vec2(state[0], state[1])
+    const distance = Vec2.distance(position, Vec2.zero())
+    const velocity = new Vec2(state[2], state[3])
+    const speed = Vec2.lengthOf(velocity)
+    const B = 100 / (1 + Math.exp(0.6 * (distance - 8)))
+    const dirToCenter = dirFromTo(position, Vec2.zero())
+    const targetVelocity = Vec2.mul(distance - 5, dirToCenter)
+    const squaredVelocityError = Vec2.distanceSquared(velocity, targetVelocity)
+    return B * speed - squaredVelocityError
+  }
+
+  getReward (state: number[]): number {
+    const otherState = this.flipFighters(state)
+    return this.getScore(state) - this.getScore(otherState)
   }
 
   getState (fighter0: Fighter, fighter1: Fighter): number[] {
@@ -84,21 +93,22 @@ export class Model {
     ]
   }
 
-  flip (state: number[]): number[] {
-    const indices = [...range(8, 15), ...range(0, 7)]
-    return indices.map(i => state[i])
+  flipFighters (state: number[]): number[] {
+    return this.flipFightersIndices.map(i => state[i])
   }
 
   getAction (state: number[]): Vec2 {
     if (Math.random() < Model.noise) {
       return sample(this.options)
     }
-    const dt = Simulation.timeStep
+    const position = new Vec2(state[0], state[1])
+    const distance = Vec2.lengthOf(position)
+    const W = 1 / (1 + Math.exp(0.3 * (50 - distance)))
     const values = this.options.map(option => {
       const outcome = [...state]
-      outcome[2] += option.x * dt * 0.5
-      outcome[3] += option.y * dt * 0.5
-      return this.evaluate(outcome)
+      outcome[2] += option.x * Simulation.timeStep
+      outcome[3] += option.y * Simulation.timeStep
+      return W * this.getReward(outcome) + (1 - W) * this.evaluate(outcome)
     })
     const maxValue = Math.max(...values)
     const bestOptions = this.options.filter((_, i) => {
