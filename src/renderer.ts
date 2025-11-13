@@ -53,7 +53,7 @@ export class Renderer {
     this.context.strokeStyle = 'hsla(0, 0%, 20%, 1)'
     this.context.lineWidth = 0.2
     this.context.beginPath()
-    this.context.arc(0, 0, 10, 0, 2 * Math.PI)
+    this.context.arc(0, 0, 5, 0, 2 * Math.PI)
     this.context.moveTo(0, Arena.size)
     this.context.lineTo(0, -Arena.size)
     this.context.moveTo(Arena.size, 0)

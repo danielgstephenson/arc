@@ -1,6 +1,6 @@
 import { Vec2 } from 'planck'
 import { Entity } from './entity'
-import { Simulation } from '../simulation'
+import { Simulation } from '../simulation/simulation'
 import { Boundary } from '../features/boundary'
 import { ArenaSummary } from '../summaries'
 

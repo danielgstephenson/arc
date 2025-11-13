@@ -1,10 +1,10 @@
 import { Vec2 } from 'planck'
 import { Entity } from './entity'
 import { Torso } from '../features/torso'
-import { Simulation } from '../simulation'
+import { Simulation } from '../simulation/simulation'
 import { Weapon } from './weapon'
 import { FighterSummary } from '../summaries'
-import { normalize } from '../math'
+import { actionSpace } from '../actionSpace'
 
 export class Fighter extends Entity {
   static movePower = 4
@@ -12,7 +12,7 @@ export class Fighter extends Entity {
   weapon: Weapon
   spawnPoint: Vec2
   deathPoint: Vec2
-  action = new Vec2(0, 0)
+  action = 0 // new Vec2(0, 0)
   color = 'hsl(220,100%,40%)'
   dead = false
 
@@ -34,7 +34,7 @@ export class Fighter extends Entity {
 
   preStep (dt: number): void {
     super.preStep(dt)
-    const dir = normalize(this.action)
+    const dir = actionSpace[this.action]
     this.force = Vec2.mul(Fighter.movePower, dir)
   }
 

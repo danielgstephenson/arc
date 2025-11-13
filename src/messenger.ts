@@ -1,14 +1,16 @@
 import { Server } from './server'
 import { Server as SocketIoServer } from 'socket.io'
-import { Simulation } from './simulation'
-import { Vec2 } from 'planck'
+import { Simulation } from './simulation/simulation'
+import { DataGenerator } from './simulation/dataGenerator'
 
 export class Messenger {
   server: Server
   io: SocketIoServer
-  simulation = new Simulation()
+  simulation: Simulation
 
   constructor (server: Server) {
+    console.log('messenger')
+    this.simulation = new DataGenerator()
     this.server = server
     this.io = new SocketIoServer(server.httpServer)
     this.setupIo()
@@ -18,9 +20,9 @@ export class Messenger {
     this.io.on('connection', socket => {
       socket.emit('connected')
       console.log(socket.id, 'connected')
-      socket.on('input', (vector: Vec2) => {
+      socket.on('input', (action: number) => {
         if (this.simulation.player != null) {
-          this.simulation.player.action = vector
+          this.simulation.player.action = action
         }
         socket.emit('summary', this.simulation.summary)
       })

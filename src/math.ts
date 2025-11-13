@@ -83,7 +83,7 @@ export function clamp (a: number, b: number, x: number): number {
 }
 
 export function round (x: number, digits: number): number {
-  return Number(x.toFixed(digits))
+  return parseFloat(x.toFixed(digits))
 }
 
 export function roundDir (dir: Vec2): Vec2 {

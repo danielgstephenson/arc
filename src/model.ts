@@ -1,7 +1,7 @@
 import { Vec2 } from 'planck'
 import { angleToDir, average, dirFromTo, dot, leakyRelu, range, sample, twoPi } from './math'
 import { Fighter } from './entities/fighter'
-import { Simulation } from './simulation'
+import { Simulation } from './simulation/simulation'
 
 export class Model {
   static noise = 0.1

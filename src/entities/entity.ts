@@ -1,5 +1,5 @@
 import { Body, BodyDef, Fixture, Vec2 } from 'planck'
-import { Simulation } from '../simulation'
+import { Simulation } from '../simulation/simulation'
 
 export class Entity {
   simulation: Simulation

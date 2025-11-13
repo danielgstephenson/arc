@@ -1,6 +1,6 @@
 import { Contact, Vec2 } from 'planck'
 import { Feature } from './features/feature'
-import { Simulation } from './simulation'
+import { Simulation } from './simulation/simulation'
 import { Torso } from './features/torso'
 import { Blade } from './features/blade'
 
