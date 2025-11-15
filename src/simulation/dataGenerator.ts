@@ -80,15 +80,17 @@ export class DataGenerator extends Simulation {
     super.restart()
     this.currentStep = 0
     const fighters = [...this.fighters.values()]
+    const spawnDistance = 10
+    const spawnReach = 10
     fighters.forEach(fighter => {
       this.respawn(fighter)
-      const fighterDistance = 50 * Math.random()
+      const fighterDistance = spawnDistance * Math.random()
       const fighterPosition = Vec2.mul(fighterDistance, randomDir())
       fighter.body.setPosition(fighterPosition)
       const fighterSpeed = 7 * Math.random()
       const fighterVelocity = Vec2.mul(fighterSpeed, randomDir())
       fighter.body.setLinearVelocity(fighterVelocity)
-      const reach = 17 * Math.random()
+      const reach = spawnReach * Math.random()
       const weaponPosition = Vec2.combine(1, fighterPosition, reach, randomDir())
       fighter.weapon.body.setPosition(weaponPosition)
       const weaponSpeed = 20 * Math.random()
