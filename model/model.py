@@ -1,5 +1,6 @@
 from math import pi
 from pickle import TRUE
+from typing import KeysView
 import torch
 from torch import Tensor, nn, tensor
 from torch.utils.data import Dataset, DataLoader
@@ -8,6 +9,8 @@ import pandas as pd
 import numpy as np
 from numpy import r_, sin, cos
 import os
+import json
+from collections import OrderedDict
 
 os.system('clear')
 
@@ -124,9 +127,7 @@ class ActionValue(torch.nn.Module):
 				if param.requires_grad:  # Only modify learnable parameters
 					param.zero_()
 
-
 os.system('clear')
-
 
 old_model = ActionValue().to(device)
 old_model.zero_()
@@ -137,6 +138,7 @@ batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
 
 if os.path.exists('checkpoint.pt'):
+	print('loading checkpoint...')
 	checkpoint = torch.load('checkpoint.pt')
 	old_model.load_state_dict(checkpoint['state_dict'])
 	model.load_state_dict(checkpoint['state_dict'])
@@ -149,10 +151,16 @@ def save_checkpoint():
 		'old_state_dict': olds_state_dict
 	}
 	torch.save(checkpoint,'checkpoint.pt')
+	ordered_dict = OrderedDict()
+	for key, value in state_dict.items():
+		if isinstance(value, Tensor):
+			ordered_dict[key] = value.detach().cpu().tolist()
+	with open('parameters.json','w') as file:
+		json.dump(ordered_dict, file, indent=4)
 
-discount = 0.03
-max_epoch = 10000000
+discount = 20 # 0.05
 max_step = 10000000
+max_epoch = 3
 print_batch = np.round(len(dataset) / 100)
 for step in range(max_step):
 	for epoch in range(max_epoch):
@@ -180,8 +188,6 @@ for step in range(max_step):
 		save_checkpoint()
 		mean_loss = np.mean(losses)
 		print('Mean Loss:', np.format_float_positional(mean_loss,6))
-		if (mean_loss < 0.01):
-			old_model.load_state_dict(model.state_dict())
-			save_checkpoint()	
-			optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-			break
+	old_model.load_state_dict(model.state_dict())
+	save_checkpoint()	
+	optimizer = torch.optim.Adam(model.parameters(), lr=0.001)

@@ -30,7 +30,7 @@ export class Simulation {
     this.restart()
     this.summary = this.summarize()
     setInterval(() => this.step(), 1000 * Simulation.timeStep / Simulation.timeScale)
-    console.log('simulation')
+    console.log('Simulation')
   }
 
   step (): void {

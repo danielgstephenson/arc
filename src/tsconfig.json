@@ -1,20 +1,21 @@
 {
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "target": "ESNext",
-    "outDir": "../dist",
+    "composite": true,
     "esModuleInterop": true,
     "lib": [
       "ES6",
       "ESNext",
       "dom"
     ],
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "../dist",
+    "resolveJsonModule": true,
+    "rootDir": ".",
     "strict": true,
     "sourceMap": true,
-    "composite": true,
-    "rootDir": "."
+    "target": "ESNext"
   },
-  "include": ["**/*"],
+  "include": ["**/*","*.json"],
   "exclude": ["../dist/**/*"]
 }
