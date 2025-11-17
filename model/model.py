@@ -1,132 +1,187 @@
-import asyncio
-import socketio
-import os
-print('importing torch...')
+from math import pi
+from pickle import TRUE
 import torch
+from torch import Tensor, nn, tensor
+from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
+import pandas as pd
+import numpy as np
+from numpy import r_, sin, cos
+import os
+
+os.system('clear')
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
-torch.set_default_device(device)
 torch.set_default_dtype(torch.float64)
+torch.set_printoptions(sci_mode=False)
 
-n0 = 16 # input size 
-n1 = 100 # first hidden layer size
-n2 = 100 # second hidden layer size
-n3 = 100 # third hidden layer size
+move_vector_array = [
+	[np.round(cos(i/4*pi),6), np.round(sin(i/4*pi),6)] 
+	for i in range(8)]
+action_array = np.concat(([[0,0]],move_vector_array)).tolist()
+action_vectors = torch.tensor(action_array,dtype=torch.float64).to(device)
+action_pairs = torch.tensor([[i,j] for i in range(9) for j in range(9)]).to(device)
 
-class Core(torch.nn.Module):
+def get_distance(a: Tensor, b: Tensor):
+	return torch.sqrt((b[:,0]-a[:,0])**2+(b[:,1]-a[:,1])**2)
+
+df = pd.read_csv('data.csv', header=None)
+# df.iloc[0,:]
+
+def reward(state0: Tensor, state1: Tensor) -> Tensor:
+	p0 = state0[:,0:2]
+	p1 = state1[:,0:2]
+	dist0 = torch.sqrt(torch.sum(p0**2,dim=1))
+	dist1 = torch.sqrt(torch.sum(p1**2,dim=1))
+	return (dist1 - dist0).unsqueeze(1)
+
+class MyDataset(Dataset):
+	def __init__(self, df: pd.DataFrame):
+		assert df.shape[1] == 35, 'df.shape[1] != 35'
+		self.state00 = torch.tensor(df.iloc[:, 0:8].to_numpy(),dtype=torch.float64)
+		self.state10 = torch.tensor(df.iloc[:, 8:16].to_numpy(),dtype=torch.float64)
+		self.dt = torch.tensor(df.iloc[:, 16].to_numpy(),dtype=torch.float64).unsqueeze(1)
+		self.action0 = action_vectors[df.iloc[:, 17].to_numpy()]
+		self.action1 = action_vectors[df.iloc[:, 18].to_numpy()]
+		self.state01 = torch.tensor(df.iloc[:, 19:27].to_numpy(),dtype=torch.float64)
+		self.state11 = torch.tensor(df.iloc[:, 27:35].to_numpy(),dtype=torch.float64)
+		self.reward = reward(self.state01,self.state11)
+
+	def get_jump_prob(self):
+		p00 = self.state00[:,0:2]
+		p10 = self.state10[:,0:2]
+		p01 = self.state01[:,0:2]
+		p11 = self.state11[:,0:2]
+		dp0 = p01 - p00
+		dp1 = p11 - p10
+		dist0 = torch.sqrt(torch.sum(dp0**2,dim=1))
+		dist1 = torch.sqrt(torch.sum(dp1**2,dim=1))
+		n0 = torch.sum(dist0 > 10)
+		n1 = torch.sum(dist1 > 10)
+		n = len(self)
+		return (n0 + n1) / n
+
+	def __len__(self):
+		return len(self.dt)
+
+	def __getitem__(self, idx):
+		s00 = self.state00[idx]
+		s10 = self.state10[idx]
+		dt = self.dt[idx]
+		a0 = self.action0[idx]
+		a1 = self.action1[idx]
+		r = self.reward[idx]
+		s01 = self.state01[idx]
+		s11 = self.state01[idx]
+		return s00, s10, dt, a0, a1, r, s01, s11
+
+dataset = MyDataset(df)
+dataset.get_jump_prob()
+
+class ActionValue(torch.nn.Module):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.activation = torch.nn.LeakyReLU(negative_slope=0.01)
-		self.h1 = torch.nn.Linear(n0, n1)
-		self.h2 = torch.nn.Linear(n1, n2)
-		self.h3 = torch.nn.Linear(n2, n3)
-		self.out = torch.nn.Linear(n3, 1)
-	def forward(self,state: torch.Tensor) -> torch.Tensor:
-		layer1 = self.activation(self.h1(state))
-		layer2 = self.activation(self.h2(layer1))
-		layer3 = self.activation(self.h3(layer2))
-		output = self.out(layer3)
-		return output
+		n0 = 20
+		n1 = 100
+		n2 = 100
+		n3 = 100
+		n4 = 100
+		self.h1 = nn.Linear(n0, n1)
+		self.h2 = nn.Linear(n1, n2)
+		self.h3 = nn.Linear(n2, n3)
+		self.h4 = nn.Linear(n3, n4)
+		self.out = nn.Linear(n4, 1)
+	def forward(self, s0: Tensor, s1: Tensor, a0: Tensor, a1: Tensor):
+		input = torch.cat((s0,s1,a0,a1),dim=1)
+		return self.core(input)
+	def core(self, input: Tensor) -> Tensor:
+		layer1: Tensor = self.activation(self.h1(input))
+		layer2: Tensor = self.activation(self.h2(layer1))
+		layer3: Tensor = self.activation(self.h3(layer2))
+		layer4: Tensor = self.activation(self.h4(layer3))
+		return self.out(layer4)
+	def value(self, s0: Tensor, s1: Tensor) -> Tensor:
+		return torch.vmap(self.maximin)(s0, s1).unsqueeze(1)
+	def maximin(self, s0: Tensor, s1: Tensor) -> Tensor:
+		action_values = self.action_value_matrix(s0, s1)
+		mins = torch.min(action_values,dim=1).values
+		return torch.max(mins)
+	def action_value_matrix(self, s0: Tensor, s1: Tensor) -> Tensor:
+		s0 = s0.repeat(81,1)
+		s1 = s1.repeat(81,1)
+		i0 = action_pairs[:,0]
+		i1 = action_pairs[:,1]
+		a0 = action_vectors[i0,:]
+		a1 = action_vectors[i1,:]
+		input = torch.cat((s0,s1,a0,a1),dim=1)
+		output = self.core(input)
+		return output.reshape(9,9)
+	def zero_(self):
+		with torch.no_grad():
+			for param in self.parameters():
+				if param.requires_grad:  # Only modify learnable parameters
+					param.zero_()
 
-class Evaluator(torch.nn.Module):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-		self.core = Core()
-		self.flipFighters = [8, 9,10,11,12,13,14,15,0, 1, 2, 3, 4, 5, 6, 7]
-		self.flipXY = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14]
-		self.flipFighters = [8, 9,10,11,12,13,14,15,0, 1, 2, 3, 4, 5, 6, 7]
-		self.negX = torch.tensor([(-1)**(i+1) for i in range(16)])
-		self.negY = torch.tensor([(-1)**i for i in range(16)])
-		self.neg = torch.tensor([-1 for _ in range(16)])
-		self.ready = True
-		self.state_list = []
-		self.value_list = []
-	def forward(self,state: torch.Tensor) -> torch.Tensor:
-		b0 = self.base(state)
-		b1 = self.base(state * self.negX)
-		b2 = self.base(state * self.negY)
-		b3 = self.base(state * self.neg)
-		b4 = self.base(state[:, self.flipXY])
-		b5 = self.base(state[:, self.flipXY] * self.negX)
-		b6 = self.base(state[:, self.flipXY] * self.negY)
-		b7 = self.base(state[:, self.flipXY] * self.neg)
-		return (b0+b1+b2+b3+b4+b5+b6+b7) / 8
-	def base(self,state: torch.Tensor) -> torch.Tensor:
-		s0 = state
-		s1 = state[:,self.flipFighters]
-		result = self.core(s0) - self.core(s1)
-		return result.squeeze(1) if result.dim() > 1 else state
-	def serialize(self):
-		state_dict = self.state_dict()
-		weight = [
-			state_dict[key].cpu().tolist()
-			for key in ['core.h1.weight','core.h2.weight','core.h3.weight','core.out.weight']
-		]
-		bias = [
-			state_dict[key].cpu().tolist()
-			for key in ['core.h1.bias','core.h2.bias','core.h3.bias','core.out.bias']
-		]
-		return {'weight': weight, 'bias': bias}
-	
-model = Evaluator()
+
+os.system('clear')
+
+
+old_model = ActionValue().to(device)
+old_model.zero_()
+model = ActionValue().to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+batch_size = 5000 # 10000
+batch_count = (len(dataset) // batch_size) + 1
+dataloader = DataLoader(dataset, batch_size, shuffle=True)
+
 if os.path.exists('checkpoint.pt'):
-	print('loading checkpoint...')
 	checkpoint = torch.load('checkpoint.pt')
-	model.load_state_dict(checkpoint)
-torch.save(model.state_dict(),'checkpoint.pt')
-# test_state = torch.tensor([[i * 1.0 for i in range(16)]])
-# test_value = model(test_state)
-# print('test_value',test_value)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+	old_model.load_state_dict(checkpoint['state_dict'])
+	model.load_state_dict(checkpoint['state_dict'])
 
+def save_checkpoint():
+	state_dict = model.state_dict()
+	olds_state_dict = old_model.state_dict()
+	checkpoint = { 
+		'state_dict': state_dict,
+		'old_state_dict': olds_state_dict
+	}
+	torch.save(checkpoint,'checkpoint.pt')
 
-def learn():
-	if len(model.state_list) == 0: return
-	model.ready = False
-	states = torch.tensor(model.state_list, dtype=torch.float64)
-	values = torch.tensor(model.value_list, dtype=torch.float64)
-	model.state_list = []
-	model.value_list = []
-	model.train()
-	optimizer.zero_grad()
-	predictions = model(states)
-	loss = F.mse_loss(predictions, values)
-	loss.backward()
-	optimizer.step()
-	torch.save(model.state_dict(),'checkpoint.pt')
-	model.ready = True
-
-sio = socketio.AsyncClient(handle_sigint=False)
-
-@sio.event
-async def connect():
-	print('connected')
-	await sio.emit('parameters',model.serialize())
-
-@sio.event
-async def observe(data):
-	model.state_list.append(data['state'])
-	model.value_list.append(data['value'])
-	if(model.ready):
-		learn()
-		await sio.emit('parameters',model.serialize())
-
-
-@sio.event
-async def disconnect():
-    print('disconnected from server')
-
-async def main():
-	try:
-		await sio.connect('http://localhost:3000', wait=True)
-		await sio.wait()
-	except asyncio.CancelledError:
-		await sio.disconnect()
-		print('Shutdown Complete')
-
-try:
-	asyncio.run(main())
-except KeyboardInterrupt:
-	print('KeyboardInterrupt')
+discount = 0.03
+max_epoch = 10000000
+max_step = 10000000
+print_batch = np.round(len(dataset) / 100)
+for step in range(max_step):
+	for epoch in range(max_epoch):
+		losses = np.array([])
+		for batch, (s00, s10, dt, a0, a1, r, s01, s11) in enumerate(dataloader):
+			optimizer.zero_grad()
+			s00: Tensor = s00.to(device)
+			s10: Tensor = s10.to(device)
+			dt: Tensor = dt.to(device)
+			a0: Tensor = a0.to(device)
+			a1: Tensor = a1.to(device)
+			r: Tensor = r.to(device)
+			s01: Tensor = s01.to(device)
+			s11: Tensor = s11.to(device)
+			with torch.no_grad():
+				v = old_model.value(s01, s11)
+			target: Tensor = dt*r + (1-dt*discount)*v
+			output: Tensor = model(s00,s10,a0,a1)
+			loss = F.huber_loss(output, target)
+			losses = np.append(losses,loss.detach().cpu().item())
+			loss.backward()
+			optimizer.step()
+			L = np.format_float_positional(loss,6)
+			print(f'Step {step+1}, Epoch {epoch+1}, Batch {batch} / {batch_count}, Loss: {L}')
+		save_checkpoint()
+		mean_loss = np.mean(losses)
+		print('Mean Loss:', np.format_float_positional(mean_loss,6))
+		if (mean_loss < 0.01):
+			old_model.load_state_dict(model.state_dict())
+			save_checkpoint()	
+			optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+			break
