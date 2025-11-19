@@ -18,16 +18,16 @@ export class Model {
   }
 
   loadParameters (): void {
+    this.bias.push(parameters['h0.bias'])
     this.bias.push(parameters['h1.bias'])
     this.bias.push(parameters['h2.bias'])
     this.bias.push(parameters['h3.bias'])
     this.bias.push(parameters['h4.bias'])
-    this.bias.push(parameters['out.bias'])
+    this.weight.push(parameters['h0.weight'])
     this.weight.push(parameters['h1.weight'])
     this.weight.push(parameters['h2.weight'])
     this.weight.push(parameters['h3.weight'])
     this.weight.push(parameters['h4.weight'])
-    this.weight.push(parameters['out.weight'])
   }
 
   core (input: number[]): number {
