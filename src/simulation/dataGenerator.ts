@@ -55,7 +55,7 @@ export class DataGenerator extends Simulation {
     const actionVector0 = actionVectors[fighters[0].action]
     const actionVector1 = actionVectors[fighters[1].action]
     const s00 = this.oldState0
-    const s10 = this.oldState0
+    const s10 = this.oldState1
     const a0 = [actionVector0.x, actionVector0.y]
     const a1 = [actionVector1.x, actionVector1.y]
     const s01 = this.getState(fighters[0])
