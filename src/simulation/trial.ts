@@ -1,10 +1,9 @@
 import { Vec2 } from 'planck'
 import { Simulation } from './simulation'
-import { randomDir, range, sample } from '../math'
+import { randomDir, range } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
-import { actionVectors } from '../actionVectors'
 
 export class Trial extends Simulation {
   filePath = './data.csv'
@@ -25,6 +24,10 @@ export class Trial extends Simulation {
     this.restart()
     this.player = fighter0
     this.bot = fighter1
+    const actionValue = this.model.core(range(20))
+    console.log('actionValue', actionValue)
+    const bias4 = this.model.bias[4]
+    console.log('bias4', bias4)
   }
 
   preStep (dt: number): void {
@@ -32,7 +35,7 @@ export class Trial extends Simulation {
     const s0 = this.getState(this.bot)
     const s1 = this.getState(this.player)
     const a1 = this.player.action
-    this.bot.action = this.model.getAction(s0, s1, a1)
+    this.bot.action = this.model.getAction(s1, s0, a1)
   }
 
   postStep (dt: number): void {
@@ -48,23 +51,8 @@ export class Trial extends Simulation {
     super.restart()
     this.currentStep = 0
     const fighters = [...this.fighters.values()]
-    const spawnDistance = 20
-    const spawnReach = 10
     fighters.forEach(fighter => {
       this.respawn(fighter)
-      const fighterDistance = spawnDistance * Math.random()
-      const fighterPosition = Vec2.mul(fighterDistance, randomDir())
-      fighter.body.setPosition(fighterPosition)
-      const fighterSpeed = 7 * Math.random()
-      const fighterVelocity = Vec2.mul(fighterSpeed, randomDir())
-      fighter.body.setLinearVelocity(fighterVelocity)
-      const reach = spawnReach * Math.random()
-      const weaponPosition = Vec2.combine(1, fighterPosition, reach, randomDir())
-      fighter.weapon.body.setPosition(weaponPosition)
-      const weaponSpeed = 20 * Math.random()
-      const weaponVelocity = Vec2.mul(weaponSpeed, randomDir())
-      fighter.weapon.body.setLinearVelocity(weaponVelocity)
-      fighter.action = sample(range(actionVectors.length))
     })
   }
 

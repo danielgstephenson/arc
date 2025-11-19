@@ -91,6 +91,22 @@ class ActionValueModel(torch.nn.Module):
 		layer2: Tensor = self.activation(self.h2(layer1))
 		layer3: Tensor = self.activation(self.h3(layer2))
 		return self.h4(layer3)
+	def value(self, s0: Tensor, s1: Tensor) -> Tensor:
+		return torch.vmap(self.maximin)(s0, s1).unsqueeze(1)
+	def maximin(self, s0: Tensor, s1: Tensor) -> Tensor:
+		action_values = self.action_value_matrix(s0, s1)
+		mins = torch.min(action_values,dim=1).values
+		return torch.max(mins)
+	def action_value_matrix(self, s0: Tensor, s1: Tensor) -> Tensor:
+		s0 = s0.repeat(81,1)
+		s1 = s1.repeat(81,1)
+		i0 = action_pairs[:,0]
+		i1 = action_pairs[:,1]
+		a0 = action_vectors[i0,:]
+		a1 = action_vectors[i1,:]
+		input = torch.cat((s0,s1,a0,a1),dim=1)
+		output = self.core(input)
+		return output.reshape(9,9)
 
 # os.system('clear')
 
@@ -104,6 +120,11 @@ if os.path.exists('checkpoint.pt'):
 	model.load_state_dict(checkpoint['state_dict'])
 	old_model.load_state_dict(checkpoint['state_dict'])
 
+x = torch.tensor([i for i in range(20)],dtype=torch.float64).unsqueeze(0).to(device)
+model.core(x)
+state_dict = model.state_dict()
+state_dict['h4.bias']
+
 def save_checkpoint():
 	state_dict = model.state_dict()
 	checkpoint = { 
@@ -114,19 +135,18 @@ def save_checkpoint():
 	for key, value in state_dict.items():
 		if isinstance(value, Tensor):
 			ordered_dict[key] = value.detach().cpu().tolist()
-	# with open('parameters.json','w') as file:
-	# 	json.dump(ordered_dict, file, indent=4)
+	with open('parameters.json','w') as file:
+	 	json.dump(ordered_dict, file, indent=4)
 
-discount = 0.2
+discount = 0.1
 dt = 0.04
-a = dt / (dt + 1 - discount*dt)
 batch_size = 100000 # 100000
 batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
-max_epoch = 5
-max_step = 100000
-for step in range(max_step):
-	for epoch in range(max_epoch):
+epoch_count = 5
+step_count = 100000
+for step in range(step_count):
+	for epoch in range(epoch_count):
 		for batch, (s00, s10, a0, a1, s01, s11) in enumerate(dataloader):
 			if batch + 1 == batch_count: break
 			optimizer.zero_grad()
@@ -140,8 +160,8 @@ for step in range(max_step):
 			r = reward(s00,s10)
 			with torch.no_grad():
 				v = reward(s01,s11)
-				#v = old_model(s01,s11,a0,a1)
-			target = a*r + (1-a)*v
+				#v = old_model.value(s01,s11)
+			target = dt*r + (1-discount*dt)*v
 			loss = F.mse_loss(output, target)
 			loss.backward()
 			optimizer.step()
