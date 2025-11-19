@@ -3,7 +3,7 @@ import { Input } from '../input'
 import { Renderer } from '../renderer'
 import io from 'socket.io-client'
 import { SimulationSummary } from '../summaries'
-import { actionSpace } from '../actionSpace'
+import { actionVectors } from '../actionVectors'
 import { whichMax } from '../math'
 
 const renderer = new Renderer()
@@ -22,7 +22,7 @@ function update (): void {
     socket.emit('input', 0)
     return
   }
-  const dots = actionSpace.map(dir => Vec2.dot(dir, vector))
+  const dots = actionVectors.map(dir => Vec2.dot(dir, vector))
   const action = whichMax(dots)
   socket.emit('input', action)
 }

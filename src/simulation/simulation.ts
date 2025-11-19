@@ -14,7 +14,6 @@ export class Simulation {
   model = new Model()
   collider: Collider
   arena: Arena
-  time: number
   summary: SimulationSummary
   entities = new Map<number, Entity>()
   fighters = new Map<number, Fighter>()
@@ -26,7 +25,6 @@ export class Simulation {
   constructor () {
     this.collider = new Collider(this)
     this.arena = new Arena(this)
-    this.time = performance.now()
     this.restart()
     this.summary = this.summarize()
     setInterval(() => this.step(), 1000 * Simulation.timeStep / Simulation.timeScale)
@@ -34,10 +32,8 @@ export class Simulation {
   }
 
   step (): void {
-    const oldTime = this.time
-    this.time = performance.now()
     if (!this.active) return
-    const dt = Simulation.timeScale * (this.time - oldTime) / 1000
+    const dt = Simulation.timeStep
     this.preStep(dt)
     this.entities.forEach(entity => entity.preStep(dt))
     this.entities.forEach(entity => entity.body.applyForce(entity.force, Vec2.zero()))
@@ -45,6 +41,14 @@ export class Simulation {
     this.entities.forEach(entity => entity.postStep(dt))
     this.summary = this.summarize()
     this.postStep(dt)
+  }
+
+  getState (fighter: Fighter): number[] {
+    const fp = fighter.body.getPosition()
+    const fv = fighter.body.getLinearVelocity()
+    const wp = fighter.weapon.body.getPosition()
+    const wv = fighter.weapon.body.getLinearVelocity()
+    return [fp.x, fp.y, fv.x, fv.y, wp.x, wp.y, wv.x, wv.y]
   }
 
   preStep (dt: number): void {}

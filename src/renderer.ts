@@ -49,7 +49,7 @@ export class Renderer {
       if (i === 0) this.context.moveTo(vertex.x, vertex.y)
       else this.context.lineTo(vertex.x, vertex.y)
     })
-    this.context.fill()
+    // this.context.fill()
     this.context.strokeStyle = 'hsla(0, 0%, 20%, 1)'
     this.context.lineWidth = 0.2
     this.context.beginPath()

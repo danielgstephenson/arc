@@ -4,7 +4,7 @@ import { Torso } from '../features/torso'
 import { Simulation } from '../simulation/simulation'
 import { Weapon } from './weapon'
 import { FighterSummary } from '../summaries'
-import { actionSpace } from '../actionSpace'
+import { actionVectors } from '../actionVectors'
 
 export class Fighter extends Entity {
   static movePower = 4
@@ -34,7 +34,7 @@ export class Fighter extends Entity {
 
   preStep (dt: number): void {
     super.preStep(dt)
-    const dir = actionSpace[this.action]
+    const dir = actionVectors[this.action]
     this.force = Vec2.mul(Fighter.movePower, dir)
   }
 

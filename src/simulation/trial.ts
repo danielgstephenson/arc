@@ -4,7 +4,7 @@ import { randomDir, range, sample } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
-import { actionSpace } from '../actionSpace'
+import { actionVectors } from '../actionVectors'
 
 export class Trial extends Simulation {
   filePath = './data.csv'
@@ -25,16 +25,6 @@ export class Trial extends Simulation {
     this.restart()
     this.player = fighter0
     this.bot = fighter1
-  }
-
-  getState (fighter: Fighter): number[] {
-    const fp = fighter.body.getPosition()
-    const fv = fighter.body.getLinearVelocity()
-    const wp = fighter.weapon.body.getPosition()
-    const wv = fighter.weapon.body.getLinearVelocity()
-    return [
-      fp.x, fp.y, fv.x, fv.y, wp.x, wp.y, wv.x, wv.y
-    ]
   }
 
   preStep (dt: number): void {
@@ -74,7 +64,7 @@ export class Trial extends Simulation {
       const weaponSpeed = 20 * Math.random()
       const weaponVelocity = Vec2.mul(weaponSpeed, randomDir())
       fighter.weapon.body.setLinearVelocity(weaponVelocity)
-      fighter.action = sample(range(actionSpace.length))
+      fighter.action = sample(range(actionVectors.length))
     })
   }
 
