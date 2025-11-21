@@ -25,10 +25,13 @@ export class Simulation {
   constructor () {
     this.collider = new Collider(this)
     this.arena = new Arena(this)
-    this.restart()
+    this.reset()
     this.summary = this.summarize()
-    setInterval(() => this.step(), 1000 * Simulation.timeStep / Simulation.timeScale)
     console.log('Simulation')
+  }
+
+  start (): void {
+    setInterval(() => this.step(), 1000 * Simulation.timeStep / Simulation.timeScale)
   }
 
   step (): void {
@@ -61,7 +64,7 @@ export class Simulation {
 
   respawn (fighter: Fighter): void {}
 
-  restart (): void {}
+  reset (): void {}
 
   summarize (): SimulationSummary {
     const fighters = [...this.fighters.values()]

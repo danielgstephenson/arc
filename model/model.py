@@ -30,7 +30,7 @@ action_pairs = torch.tensor([[i,j] for i in range(9) for j in range(9)]).to(devi
 def get_distance(a: Tensor, b: Tensor):
 	return torch.sqrt((b[:,0]-a[:,0])**2+(b[:,1]-a[:,1])**2)
 
-def reward(state0: Tensor, state1: Tensor) -> Tensor:
+def score(state0: Tensor, state1: Tensor) -> Tensor:
 	position0 = state0[:,0:2]
 	position1 = state1[:,0:2]
 	dist0 = torch.sqrt(torch.sum(position0**2,dim=1))
@@ -38,7 +38,6 @@ def reward(state0: Tensor, state1: Tensor) -> Tensor:
 	return (dist1 - dist0).unsqueeze(1)
 
 df = pd.read_csv('../data.csv', header=None)
-death_count = df.iloc[:, 36]
 
 class MyDataset(Dataset):
 	def __init__(self, df: pd.DataFrame):
@@ -48,10 +47,10 @@ class MyDataset(Dataset):
 		self.action1: Tensor = torch.tensor(df.iloc[:, 18:20].to_numpy(),dtype=torch.float64)
 		self.state01: Tensor = torch.tensor(df.iloc[:, 20:28].to_numpy(),dtype=torch.float64)
 		self.state11: Tensor = torch.tensor(df.iloc[:, 28:36].to_numpy(),dtype=torch.float64)
-		self.death_count: Tensor = torch.tensor(df.iloc[:, 36].to_numpy(),dtype=torch.float64)
+		self.count = df.shape[0]
 
 	def __len__(self):
-		return len(self.death_count)
+		return self.count
 
 	def __getitem__(self, idx):
 		s00 = self.state00[idx]
@@ -63,8 +62,6 @@ class MyDataset(Dataset):
 		return s00, s10, a0, a1, s01, s11
 
 dataset = MyDataset(df)
-torch.sum(dataset.death_count)
-torch.mean(dataset.death_count)
 
 class ActionValueModel(torch.nn.Module):
 	def __init__(self, *args, **kwargs):
@@ -82,7 +79,7 @@ class ActionValueModel(torch.nn.Module):
 		self.h2 = nn.Linear(n2, n3)
 		self.h3 = nn.Linear(n3, n4)
 		self.h4 = nn.Linear(n4, n5)
-	def forward(self, s0: Tensor, s1: Tensor, a0: Tensor,a1: Tensor) -> Tensor:
+	def forward(self, s0: Tensor, s1: Tensor, a0: Tensor, a1: Tensor) -> Tensor:
 		input = torch.cat((s0,s1,a0,a1),dim=1)
 		return self.core(input)
 	def core(self, input: Tensor) -> Tensor:
@@ -120,11 +117,6 @@ if os.path.exists('checkpoint.pt'):
 	model.load_state_dict(checkpoint['state_dict'])
 	old_model.load_state_dict(checkpoint['state_dict'])
 
-x = torch.tensor([i for i in range(20)],dtype=torch.float64).unsqueeze(0).to(device)
-model.core(x)
-state_dict = model.state_dict()
-state_dict['h4.bias']
-
 def save_checkpoint():
 	state_dict = model.state_dict()
 	checkpoint = { 
@@ -140,10 +132,10 @@ def save_checkpoint():
 
 discount = 0.1
 dt = 0.04
-batch_size = 100000 # 100000
+batch_size = 2000 # 100000
 batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
-epoch_count = 5
+epoch_count = 20
 step_count = 100000
 for step in range(step_count):
 	for epoch in range(epoch_count):
@@ -157,15 +149,37 @@ for step in range(step_count):
 			s01: Tensor = s01.to(device)
 			s11: Tensor = s11.to(device)
 			output: Tensor = model(s00,s10,a0,a1)
-			r = reward(s00,s10)
+			score0 = score(s00,s10)
+			score1 = score(s01,s11)
+			reward = score1 - score0
 			with torch.no_grad():
-				v = reward(s01,s11)
-				#v = old_model.value(s01,s11)
-			target = dt*r + (1-discount*dt)*v
+				target = reward + (1-dt*discount)*old_model.value(s01,s11)
 			loss = F.mse_loss(output, target)
 			loss.backward()
 			optimizer.step()
 			L = loss.detach().cpu().numpy()
 			print(f'Step {step+1}, Epoch {epoch+1}, Batch {batch+1:02d} / {batch_count}, Loss: {L}')
+		save_checkpoint()
 	old_model.load_state_dict(model.state_dict())
-	save_checkpoint()
+
+(s00, s10, a0, a1, s01, s11) = next(iter(dataloader))
+s00: Tensor = s00.to(device)
+s10: Tensor = s10.to(device)
+a0: Tensor = a0.to(device)
+a1: Tensor = a1.to(device)
+s01: Tensor = s01.to(device)
+s11: Tensor = s11.to(device)
+output: Tensor = model(s00,s10,a0,a1).squeeze(1)
+score0 = score(s00,s10)
+score1 = score(s01,s11)
+reward = score1 - score0
+with torch.no_grad():
+	target = reward + (1-dt*discount)*old_model.value(s01,s11)
+target = target.squeeze(1)
+
+x = output.detach().cpu().numpy()
+y = target.detach().cpu().numpy()
+plt.ion()
+plt.clf()
+plt.axline(xy1=(0,0),xy2=(1,1),color=(0,0.8,0))
+plt.scatter(x,y)

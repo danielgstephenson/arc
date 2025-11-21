@@ -1,6 +1,6 @@
 import { Vec2 } from 'planck'
 import { Simulation } from './simulation'
-import { randomDir, range } from '../math'
+import { randomDir } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
@@ -21,21 +21,18 @@ export class Trial extends Simulation {
     fighter0.weapon.color = 'hsla(220, 50%, 40%, 0.5)'
     fighter1.color = 'hsl(120, 100%, 25%)'
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
-    this.restart()
+    this.reset()
     this.player = fighter0
     this.bot = fighter1
-    const actionValue = this.model.core(range(20))
-    console.log('actionValue', actionValue)
-    const bias4 = this.model.bias[4]
-    console.log('bias4', bias4)
+    this.start()
   }
 
   preStep (dt: number): void {
     super.preStep(dt)
-    const s0 = this.getState(this.bot)
-    const s1 = this.getState(this.player)
-    const a1 = this.player.action
-    this.bot.action = this.model.getAction(s1, s0, a1)
+    const s0 = this.getState(this.player)
+    const a0 = this.player.action
+    const s1 = this.getState(this.bot)
+    this.bot.action = this.model.getAction(s1, s0, a0)
   }
 
   postStep (dt: number): void {
@@ -47,8 +44,8 @@ export class Trial extends Simulation {
     this.currentStep += 1
   }
 
-  restart (): void {
-    super.restart()
+  reset (): void {
+    super.reset()
     this.currentStep = 0
     const fighters = [...this.fighters.values()]
     fighters.forEach(fighter => {
@@ -58,7 +55,7 @@ export class Trial extends Simulation {
 
   respawn (fighter: Fighter): void {
     super.respawn(fighter)
-    const spawnRadius = Math.min(30, Arena.size) - Blade.radius
+    const spawnRadius = Math.min(20, Arena.size) - Blade.radius
     fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)
