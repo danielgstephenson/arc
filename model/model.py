@@ -14,13 +14,14 @@ from collections import OrderedDict
 import matplotlib.pyplot as plt
 
 os.system('clear')
-# data_path = '/teamspace/studios/this_studio/arc/model/parameters.json'
+# data_path = '/teamspace/studios/this_studio/arc/data.csv'
 # checkpoint_path = '/teamspace/studios/this_studio/arc/model/checkpoint.pt'
 # json_path = '/teamspace/studios/this_studio/arc/model/parameters.json'
 data_path = '../data.csv'
 checkpoint_path = 'checkpoint.pt'
 json_path = 'parameters.json'
 
+df = pd.read_csv(data_path, header=None)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
@@ -43,8 +44,6 @@ def score(state0: Tensor, state1: Tensor) -> Tensor:
 	dist0 = torch.sqrt(torch.sum(position0**2,dim=1))
 	dist1 = torch.sqrt(torch.sum(position1**2,dim=1))
 	return (dist1 - dist0).unsqueeze(1)
-
-df = pd.read_csv(data_path, header=None)
 
 class MyDataset(Dataset):
 	def __init__(self, df: pd.DataFrame):
