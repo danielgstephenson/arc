@@ -4,4 +4,3 @@ dist/
 config.json
 *.pem
 *.csv
-*.pt
