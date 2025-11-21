@@ -23,7 +23,7 @@ torch.set_printoptions(sci_mode=False)
 move_vector_array = [
 	[np.round(cos(i/4*pi),6), np.round(sin(i/4*pi),6)] 
 	for i in range(8)]
-action_array = np.concat(([[0,0]],move_vector_array)).tolist()
+action_array = np.concatenate(([[0,0]],move_vector_array)).tolist()
 action_vectors = torch.tensor(action_array,dtype=torch.float64).to(device)
 action_pairs = torch.tensor([[i,j] for i in range(9) for j in range(9)]).to(device)
 
