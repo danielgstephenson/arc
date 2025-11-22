@@ -149,6 +149,8 @@ for step in range(step_count):
 		for batch, (s00, s10, a0, a1, s01, s11) in enumerate(dataloader):
 			if batch + 1 == batch_count: break
 			optimizer.zero_grad()
+			s00: Tensor
+			s00.to_(device)
 			s00: Tensor = s00.to(device)
 			s10: Tensor = s10.to(device)
 			a0: Tensor = a0.to(device)
@@ -172,7 +174,7 @@ for step in range(step_count):
 	old_model.load_state_dict(model.state_dict())
 
 (s00, s10, a0, a1, s01, s11) = next(iter(dataloader))
-s00: Tensor = s00.to(device)
+s00.to_(device)
 s10: Tensor = s10.to(device)
 a0: Tensor = a0.to(device)
 a1: Tensor = a1.to(device)

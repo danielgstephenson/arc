@@ -106,7 +106,8 @@ export class DataGenerator extends Simulation {
   reset (): void {
     super.reset()
     const fighters = [...this.fighters.values()]
-    const spawnDistance = 100
+    const rand = Math.random()
+    const spawnDistance = rand < 0.5 ? 10 : 100
     const spawnReach = 10
     fighters.forEach(fighter => {
       this.respawn(fighter)
