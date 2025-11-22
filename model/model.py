@@ -21,7 +21,9 @@ data_path = '../data.csv'
 checkpoint_path = 'checkpoint.pt'
 json_path = 'parameters.json'
 
+print('loading data...')
 df = pd.read_csv(data_path, header=None)
+print('data loaded.')
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
@@ -136,11 +138,12 @@ def save_checkpoint():
 
 discount = 0.1
 dt = 0.04
-batch_size = 2000 # 100000
+batch_size = 10000 # 100000
 batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
-epoch_count = 20
+epoch_count = 500000
 step_count = 100000
+
 for step in range(step_count):
 	for epoch in range(epoch_count):
 		for batch, (s00, s10, a0, a1, s01, s11) in enumerate(dataloader):
@@ -157,13 +160,15 @@ for step in range(step_count):
 			score1 = score(s01,s11)
 			reward = score1 - score0
 			with torch.no_grad():
-				target = reward + (1-dt*discount)*old_model.value(s01,s11)
+				target = reward
+				# target = reward + (1 - dt*discount)*old_model.value(s01,s11)
 			loss = F.mse_loss(output, target)
 			loss.backward()
 			optimizer.step()
 			L = loss.detach().cpu().numpy()
-			print(f'Step {step+1}, Epoch {epoch+1}, Batch {batch+1:02d} / {batch_count}, Loss: {L}')
-		save_checkpoint()
+			print(f'Step {step+1}, Epoch {epoch+1} / {epoch_count}, Batch {batch+1:02d} / {batch_count}, Loss: {L}')
+			if batch % 100 == 0: save_checkpoint()
+	save_checkpoint()
 	old_model.load_state_dict(model.state_dict())
 
 (s00, s10, a0, a1, s01, s11) = next(iter(dataloader))

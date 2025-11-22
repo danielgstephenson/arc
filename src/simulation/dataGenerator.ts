@@ -94,7 +94,7 @@ export class DataGenerator extends Simulation {
 
   respawn (fighter: Fighter): void {
     super.respawn(fighter)
-    const spawnRadius = Math.min(20, Arena.size) - Blade.radius
+    const spawnRadius = Math.min(100, Arena.size) - Blade.radius
     fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)
@@ -106,7 +106,7 @@ export class DataGenerator extends Simulation {
   reset (): void {
     super.reset()
     const fighters = [...this.fighters.values()]
-    const spawnDistance = 40
+    const spawnDistance = 100
     const spawnReach = 10
     fighters.forEach(fighter => {
       this.respawn(fighter)
