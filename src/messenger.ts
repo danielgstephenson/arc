@@ -29,13 +29,6 @@ export class Messenger {
       socket.on('disconnect', () => {
         console.log(socket.id, 'disconnected')
       })
-      socket.on('parameters', parameters => {
-        this.simulation.model.weight = parameters.weight as number[][][]
-        this.simulation.model.bias = parameters.bias as number[][]
-        // const testState = range(16)
-        // const testValue = this.simulation.model.evaluate(testState)
-        // console.log('test_value', testValue)
-      })
     })
   }
 }

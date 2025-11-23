@@ -25,13 +25,6 @@ print('loading data...')
 df = pd.read_csv(data_path, header=None)
 print('data loaded.')
 
-# Example of how to unpack one row of the data
-16*(1+9*9) # 1 current state, 9*9 possible next states
-x = torch.tensor(df.iloc[0,:].to_numpy())
-x.shape
-y = x.unfold(0,16,16)
-y.shape
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
 torch.set_default_dtype(torch.float64)
@@ -55,34 +48,40 @@ move_vector_array = [
 	for i in range(8)]
 action_array = np.concatenate(([[0,0]],move_vector_array)).tolist()
 action_vectors = torch.tensor(action_array,dtype=torch.float64).to(device)
-action_pairs = torch.tensor([[i,j] for i in range(9) for j in range(9)]).to(device)
+action_profiles = torch.tensor([
+	action_array[i] + action_array[j]
+	for i in range(9) for j in range(9)
+]).to(device)
 
 class ActionValueModel(torch.nn.Module):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.activation = torch.nn.LeakyReLU(negative_slope=0.01)
-		# self.activation = torch.nn.ReLU()
-		n0 = 16
-		n1 = 200
-		n2 = 200
-		n3 = 200
-		n4 = 200
-		n5 = 81
+		n0 = 20
+		n1 = 100
+		n2 = 100
+		n3 = 100
+		n4 = 100
+		n5 = 1
 		self.h0 = nn.Linear(n0, n1)
 		self.h1 = nn.Linear(n1, n2)
 		self.h2 = nn.Linear(n2, n3)
 		self.h3 = nn.Linear(n3, n4)
 		self.h4 = nn.Linear(n4, n5)
-	def forward(self, state: Tensor) -> Tensor:
-		layer0: Tensor = self.activation(self.h0(state))
+	def forward(self, state_actions: Tensor) -> Tensor:
+		layer0: Tensor = self.activation(self.h0(state_actions))
 		layer1: Tensor = self.activation(self.h1(layer0))
 		layer2: Tensor = self.activation(self.h2(layer1))
 		layer3: Tensor = self.activation(self.h3(layer2))
 		return self.h4(layer3)
 	def __call__(self, *args, **kwds) -> Tensor:
 		return super().__call__(*args, **kwds)
-	def value(self, state: Tensor) -> Tensor:
-		action_values = self(state).reshape(-1,9,9)
+	def value(self, states: Tensor) -> Tensor:
+		n = states.shape[0]
+		s = states.repeat_interleave(81,0)
+		a = action_profiles.repeat(n,1)
+		state_actions = torch.cat((s,a),dim=1) 
+		action_values = self(state_actions).reshape(-1,9,9)
 		mins = torch.amin(action_values,2)
 		return torch.amax(mins,1)
 	
@@ -90,9 +89,9 @@ old_model = ActionValueModel().to(device)
 model = ActionValueModel().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-def score(state: Tensor) -> Tensor:
-	state0 = state[:,0:8]
-	state1 = state[:,8:16]
+def score(states: Tensor) -> Tensor:
+	state0 = states[:,0:8]
+	state1 = states[:,8:16]
 	torsoPos0 = state0[:,0:2]
 	torsoPos1 = state1[:,0:2]
 	dist0 = torch.sqrt(torch.sum(torsoPos0**2,dim=1))
@@ -128,7 +127,7 @@ def save_checkpoint():
 	 	json.dump(ordered_dict, file, indent=4)
 
 discount = 0
-batch_size = 2000 # 100000
+batch_size = 10000 # 100000
 batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
 epoch_count = 500000
@@ -139,16 +138,16 @@ for step in range(step_count):
 		for batch, cpu_data in enumerate(dataloader):
 			optimizer.zero_grad()
 			data: Tensor = cpu_data.to(device)
-			present = data[:,0:16]
-			output = model(present)
-			present_score = score(present)
-			present_scores = present_score.repeat(1,81)
-			future = data[:,16:].reshape(-1,16)
-			future_scores = score(future).reshape(-1,81) 
-			rewards = future_scores - present_scores
+			state_actions = data[:,0:20]
+			output = model(state_actions)
+			state = data[:,0:16]
+			present_score = score(state)
+			future = data[:,20:36] 
+			future_score = score(future)
+			reward = future_score - present_score
 			with torch.no_grad():
-				future_values = old_model.value(future).reshape(-1,81)
-			target = rewards + discount*future_values
+				future_value = old_model.value(future)
+			target = reward + discount*future_value
 			loss = F.mse_loss(output, target)
 			loss.backward()
 			optimizer.step()
@@ -158,39 +157,24 @@ for step in range(step_count):
 	save_checkpoint()
 	old_model.load_state_dict(model.state_dict())
 
-
-# batch_size = 3
-# data = dataset[0:batch_size].to(device)
-# present = data[:,0:16]
+# plot_cpu_data = next(iter(dataloader))
+# optimizer.zero_grad()
+# plot_data: Tensor = cpu_data.to(device)
+# plot_data = dataset[0:batch_size].to(device)
+# present = plot_data[:,0:16]
 # output = model(present)
 # present_score = score(present)
 # present_scores = present_score.repeat(1,81)
-# future = data[:,16:].reshape(-1,16)
+# future = plot_data[:,16:].reshape(-1,16)
 # future_scores = score(future).reshape(-1,81) 
 # rewards = future_scores - present_scores
 # with torch.no_grad():
 # 	future_values = old_model.value(future).reshape(-1,81)
 # target = rewards + discount*future_values
-
-
-plot_cpu_data = next(iter(dataloader))
-optimizer.zero_grad()
-plot_data: Tensor = cpu_data.to(device)
-plot_data = dataset[0:batch_size].to(device)
-present = plot_data[:,0:16]
-output = model(present)
-present_score = score(present)
-present_scores = present_score.repeat(1,81)
-future = plot_data[:,16:].reshape(-1,16)
-future_scores = score(future).reshape(-1,81) 
-rewards = future_scores - present_scores
-with torch.no_grad():
-	future_values = old_model.value(future).reshape(-1,81)
-target = rewards + discount*future_values
-x = output.detach().cpu().numpy()
-y = target.detach().cpu().numpy()
-x.shape
-plt.ion()
-plt.clf()
-plt.axline(xy1=(0,0),xy2=(1,1),color=(0,0.8,0))
-plt.scatter(x,y)
+# x = output.detach().cpu().numpy()
+# y = target.detach().cpu().numpy()
+# x.shape
+# plt.ion()
+# plt.clf()
+# plt.axline(xy1=(0,0),xy2=(1,1),color=(0,0.8,0))
+# plt.scatter(x,y)

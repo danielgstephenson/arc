@@ -1,6 +1,6 @@
 import { Vec2 } from 'planck'
 import { Simulation } from './simulation'
-import { randomDir, range, sample } from '../math'
+import { randomDir, range } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
@@ -21,7 +21,6 @@ export class DataGenerator extends Simulation {
     fighter0.weapon.color = 'hsla(220, 50%, 40%, 0.5)'
     fighter1.color = 'hsl(120, 100%, 25%)'
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
-    this.reset()
     this.writeStream = fs.createWriteStream(this.filePath, { flags: 'a' })
     this.generate()
   }
@@ -47,16 +46,6 @@ export class DataGenerator extends Simulation {
       const weaponSpeed = 20 * Math.random()
       return Vec2.mul(weaponSpeed, randomDir())
     })
-    range(2).forEach(i => {
-      fighters[i].body.setPosition(fighterPositions[i])
-      fighters[i].body.setLinearVelocity(fighterVelocities[i])
-      fighters[i].weapon.body.setPosition(weaponPositions[i])
-      fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
-      fighters[i].action = 0
-    })
-    const s0 = this.getState(fighters[0])
-    const s1 = this.getState(fighters[1])
-    const data = [...s0, ...s1]
     range(9).forEach(a0 => {
       range(9).forEach(a1 => {
         const a = [a0, a1]
@@ -67,15 +56,19 @@ export class DataGenerator extends Simulation {
           fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
           fighters[i].action = a[i]
         })
+        const s00 = this.getState(fighters[0])
+        const s10 = this.getState(fighters[1])
+        const v0 = actionVectors[a0]
+        const v1 = actionVectors[a1]
+        const data = [...s00, ...s10, v0.x, v0.y, v1.x, v1.y]
         this.step()
-        const s0 = this.getState(fighters[0])
-        const s1 = this.getState(fighters[1])
-        data.push(...s0, ...s1)
+        const s01 = this.getState(fighters[0])
+        const s11 = this.getState(fighters[1])
+        data.push(...s01, ...s11)
+        const dataString = data.join(',') + '\n'
+        this.writeStream.write(dataString)
       })
     })
-    // const roundData = data.map(x => round(x, 8))
-    const dataString = data.join(',') + '\n'
-    this.writeStream.write(dataString)
     setTimeout(() => this.generate(), 0)
   }
 
@@ -102,29 +95,5 @@ export class DataGenerator extends Simulation {
     fighter.body.setLinearVelocity(Vec2.zero())
     fighter.weapon.body.setLinearVelocity(Vec2.zero())
     fighter.dead = false
-  }
-
-  reset (): void {
-    super.reset()
-    const fighters = [...this.fighters.values()]
-    const rand = Math.random()
-    const spawnDistance = rand < 0.5 ? 20 : 60
-    const spawnReach = 10
-    fighters.forEach(fighter => {
-      this.respawn(fighter)
-      const fighterDistance = spawnDistance * Math.random()
-      const fighterPosition = Vec2.mul(fighterDistance, randomDir())
-      fighter.body.setPosition(fighterPosition)
-      const fighterSpeed = 7 * Math.random()
-      const fighterVelocity = Vec2.mul(fighterSpeed, randomDir())
-      fighter.body.setLinearVelocity(fighterVelocity)
-      const reach = spawnReach * Math.random()
-      const weaponPosition = Vec2.combine(1, fighterPosition, reach, randomDir())
-      fighter.weapon.body.setPosition(weaponPosition)
-      const weaponSpeed = 20 * Math.random()
-      const weaponVelocity = Vec2.mul(weaponSpeed, randomDir())
-      fighter.weapon.body.setLinearVelocity(weaponVelocity)
-      fighter.action = sample(range(actionVectors.length))
-    })
   }
 }
