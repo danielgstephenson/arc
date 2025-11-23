@@ -63,10 +63,10 @@ class ActionValueModel(torch.nn.Module):
 		self.activation = torch.nn.LeakyReLU(negative_slope=0.01)
 		# self.activation = torch.nn.ReLU()
 		n0 = 16
-		n1 = 100
-		n2 = 100
-		n3 = 100
-		n4 = 100
+		n1 = 200
+		n2 = 200
+		n3 = 200
+		n4 = 200
 		n5 = 81
 		self.h0 = nn.Linear(n0, n1)
 		self.h1 = nn.Linear(n1, n2)
@@ -128,7 +128,7 @@ def save_checkpoint():
 	 	json.dump(ordered_dict, file, indent=4)
 
 discount = 0
-batch_size = 1000 # 100000
+batch_size = 2000 # 100000
 batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
 epoch_count = 500000
@@ -139,7 +139,6 @@ for step in range(step_count):
 		for batch, cpu_data in enumerate(dataloader):
 			optimizer.zero_grad()
 			data: Tensor = cpu_data.to(device)
-			data = dataset[0:batch_size].to(device)
 			present = data[:,0:16]
 			output = model(present)
 			present_score = score(present)
@@ -174,15 +173,15 @@ for step in range(step_count):
 # target = rewards + discount*future_values
 
 
-data = next(iter(dataloader))
+plot_cpu_data = next(iter(dataloader))
 optimizer.zero_grad()
-data: Tensor = cpu_data.to(device)
-data = dataset[0:batch_size].to(device)
-present = data[:,0:16]
+plot_data: Tensor = cpu_data.to(device)
+plot_data = dataset[0:batch_size].to(device)
+present = plot_data[:,0:16]
 output = model(present)
 present_score = score(present)
 present_scores = present_score.repeat(1,81)
-future = data[:,16:].reshape(-1,16)
+future = plot_data[:,16:].reshape(-1,16)
 future_scores = score(future).reshape(-1,81) 
 rewards = future_scores - present_scores
 with torch.no_grad():
@@ -190,6 +189,7 @@ with torch.no_grad():
 target = rewards + discount*future_values
 x = output.detach().cpu().numpy()
 y = target.detach().cpu().numpy()
+x.shape
 plt.ion()
 plt.clf()
 plt.axline(xy1=(0,0),xy2=(1,1),color=(0,0.8,0))
