@@ -1,6 +1,6 @@
 import { Vec2 } from 'planck'
 import { Simulation } from './simulation'
-import { randomDir, range, round, sample } from '../math'
+import { randomDir, range, sample } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
@@ -10,7 +10,6 @@ import fs from 'fs-extra'
 export class DataGenerator extends Simulation {
   writeStream: fs.WriteStream
   filePath = './data.csv'
-  deathCount = 0
   maxStep = 4
 
   constructor () {
@@ -48,6 +47,16 @@ export class DataGenerator extends Simulation {
       const weaponSpeed = 20 * Math.random()
       return Vec2.mul(weaponSpeed, randomDir())
     })
+    range(2).forEach(i => {
+      fighters[i].body.setPosition(fighterPositions[i])
+      fighters[i].body.setLinearVelocity(fighterVelocities[i])
+      fighters[i].weapon.body.setPosition(weaponPositions[i])
+      fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
+      fighters[i].action = 0
+    })
+    const s0 = this.getState(fighters[0])
+    const s1 = this.getState(fighters[1])
+    const data = [...s0, ...s1]
     range(9).forEach(a0 => {
       range(9).forEach(a1 => {
         const a = [a0, a1]
@@ -58,22 +67,16 @@ export class DataGenerator extends Simulation {
           fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
           fighters[i].action = a[i]
         })
-        const s00 = this.getState(fighters[0])
-        const s10 = this.getState(fighters[1])
         this.step()
-        const s01 = this.getState(fighters[0])
-        const s11 = this.getState(fighters[1])
-        const av0 = actionVectors[a0]
-        const av1 = actionVectors[a1]
-        const A0 = [av0.x, av0.y]
-        const A1 = [av1.x, av1.y]
-        const data = [...s00, ...s10, ...A0, ...A1, ...s01, ...s11]
-        const roundData = data.map(x => round(x, 8))
-        const dataString = roundData.join(',') + '\n'
-        this.writeStream.write(dataString)
+        const s0 = this.getState(fighters[0])
+        const s1 = this.getState(fighters[1])
+        data.push(...s0, ...s1)
       })
     })
-    setTimeout(() => this.generate(), 1)
+    // const roundData = data.map(x => round(x, 8))
+    const dataString = data.join(',') + '\n'
+    this.writeStream.write(dataString)
+    setTimeout(() => this.generate(), 0)
   }
 
   preStep (dt: number): void {
@@ -83,18 +86,16 @@ export class DataGenerator extends Simulation {
   postStep (dt: number): void {
     super.postStep(dt)
     const fighters = [...this.fighters.values()]
-    this.deathCount = 0
-    fighters.forEach(fighter => {
+    fighters.forEach((fighter, i) => {
       if (fighter.dead) {
-        this.deathCount += 1
-        this.respawn(fighter)
+        // this.respawn(fighter)
       }
     })
   }
 
   respawn (fighter: Fighter): void {
     super.respawn(fighter)
-    const spawnRadius = Math.min(100, Arena.size) - Blade.radius
+    const spawnRadius = Math.min(50, Arena.size) - Blade.radius
     fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)
@@ -107,7 +108,7 @@ export class DataGenerator extends Simulation {
     super.reset()
     const fighters = [...this.fighters.values()]
     const rand = Math.random()
-    const spawnDistance = rand < 0.5 ? 10 : 100
+    const spawnDistance = rand < 0.5 ? 20 : 60
     const spawnReach = 10
     fighters.forEach(fighter => {
       this.respawn(fighter)
