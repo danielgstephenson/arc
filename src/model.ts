@@ -2,7 +2,6 @@
 import { dot, leakyRelu, range, sample } from './math'
 import parameters from '../model/parameters.json'
 import { actionVectors } from './actionVectors'
-import { Vec2 } from 'planck'
 
 export class Model {
   static noise = 0.1
@@ -47,12 +46,6 @@ export class Model {
       layers.push(layer)
     })
     return layers[5][0]
-  }
-
-  getReward (s0: number[], s1: number[]): number {
-    const pos0 = new Vec2(s0[0], s0[1])
-    const pos1 = new Vec2(s1[0], s1[1])
-    return Vec2.lengthOf(pos1) - Vec2.lengthOf(pos0)
   }
 
   getActionValue (s0: number[], s1: number[], a0: number, a1: number): number {

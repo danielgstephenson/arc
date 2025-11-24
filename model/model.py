@@ -83,7 +83,7 @@ class ActionValueModel(torch.nn.Module):
 		state_actions = torch.cat((s,a),dim=1) 
 		action_values = self(state_actions).reshape(-1,9,9)
 		mins = torch.amin(action_values,2)
-		return torch.amax(mins,1)
+		return torch.amax(mins,1).unsqueeze(1)
 	
 old_model = ActionValueModel().to(device)
 model = ActionValueModel().to(device)
@@ -126,11 +126,11 @@ def save_checkpoint():
 	with open(json_path,'w') as file:
 	 	json.dump(ordered_dict, file, indent=4)
 
-discount = 0
-batch_size = 10000 # 100000
+discount = 0.1
+batch_size = 10000
 batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
-epoch_count = 500000
+epoch_count = 3
 step_count = 100000
 
 for step in range(step_count):
@@ -152,8 +152,15 @@ for step in range(step_count):
 			loss.backward()
 			optimizer.step()
 			L = loss.detach().cpu().numpy()
-			print(f'Step {step+1}, Epoch {epoch+1} / {epoch_count}, Batch {batch+1:02d} / {batch_count}, Loss: {L}')
-			if batch % 100 == 0: save_checkpoint()
+			if batch % 1 == 0:
+				message = ''
+				message += f'Step {step+1}, '
+				message += f'Epoch {epoch+1} / {epoch_count}, '
+				message += f'Batch {batch+1:02d} / {batch_count}, '
+				message += f'Loss: {L}'
+				print(message)
+			if batch % 100 == 0: 
+				save_checkpoint()
 	save_checkpoint()
 	old_model.load_state_dict(model.state_dict())
 
