@@ -3,7 +3,7 @@ from pickle import TRUE
 from typing import KeysView
 import torch
 from torch import Tensor, nn, tensor
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
@@ -15,9 +15,11 @@ import matplotlib.pyplot as plt
 
 # data_path = '/teamspace/studios/this_studio/arc/data.csv'
 # checkpoint_path = '/teamspace/studios/this_studio/arc/model/checkpoint.pt'
+# old_checkpoint_path = '/teamspace/studios/this_studio/arc/model/checkpoint0.pt'
 # json_path = '/teamspace/studios/this_studio/arc/model/parameters.json'
 data_path = '../data.csv'
 checkpoint_path = 'checkpoint.pt'
+old_checkpoint_path = 'checkpoint0.pt'
 json_path = 'parameters.json'
 
 print('Loading Data...')
@@ -28,19 +30,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
 torch.set_default_dtype(torch.float64)
 torch.set_printoptions(sci_mode=False)
-
-class MyDataset(Dataset):
-	def __init__(self, df: pd.DataFrame):
-		self.data: Tensor = torch.tensor(df.to_numpy(),dtype=torch.float64)
-		self.count = df.shape[0]
-
-	def __len__(self):
-		return self.count
-
-	def __getitem__(self, idx):
-		return self.data[idx]
-
-dataset = MyDataset(df)
 
 move_vector_array = [
 	[np.round(cos(i/4*pi),6), np.round(sin(i/4*pi),6)] 
@@ -83,10 +72,6 @@ class ActionValueModel(torch.nn.Module):
 		action_values = self(state_actions).reshape(-1,9,9)
 		mins = torch.amin(action_values,2)
 		return torch.amax(mins,1).unsqueeze(1)
-	
-old_model = ActionValueModel().to(device)
-model = ActionValueModel().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 def score(states: Tensor) -> Tensor:
 	state0 = states[:,0:8]
@@ -106,8 +91,6 @@ def score(states: Tensor) -> Tensor:
 	score = dist1 - dist0 + 100*(death1 - death0)
 	return score.unsqueeze(1)
 
-# os.system('clear')
-
 def save_checkpoint():
 	checkpoint = { 
 		'state_dict': model.state_dict(),
@@ -121,40 +104,63 @@ def save_checkpoint():
 	with open(json_path,'w') as file: 
 		json.dump(ordered_dict, file, indent=4)
 
-dt = 0.2
-discount = 0.01
-gamma = 1 - dt*discount
-batch_size = 100000
-batch_count = (len(dataset) // batch_size) + 1
-dataloader = DataLoader(dataset, batch_size, shuffle=True)
-epoch_count = 100000
-best_mse = 1000000
+old_model = ActionValueModel().to(device).eval()
+model = ActionValueModel().to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+best_mse = 1000000
 if os.path.exists(checkpoint_path):
 	checkpoint = torch.load(checkpoint_path, weights_only=False)
 	model.load_state_dict(checkpoint['state_dict'])
-	old_model.load_state_dict(checkpoint['state_dict'])
 	best_mse = checkpoint['best_mse']
+if os.path.exists(old_checkpoint_path):
+	old_checkpoint = torch.load(old_checkpoint_path, weights_only=False)
+	old_model.load_state_dict(old_checkpoint['state_dict'])
 
-# Pre-calculate old model value predictions
+# Pre-calculate value predictions
+print('Pre-Calculating Values')
+base_data: Tensor = torch.tensor(df.to_numpy(),dtype=torch.float64)
+precal_batch_size = 10000
+precal_batch_count = (base_data.shape[0] // precal_batch_size) + 1
+future_state = base_data[:,20:36]
+precal_dataset = TensorDataset(future_state)
+precal_dataloader = DataLoader(precal_dataset, batch_size=10000, shuffle=False)
+batch_outputs = []
+with torch.no_grad():
+	for batch, data_array in enumerate(precal_dataloader):
+		future_state = data_array[0].to(device)
+		print(f'Pre-Calculate Batch {batch} / {precal_batch_count}')
+		future_value = old_model.value(future_state).detach().cpu()
+		batch_outputs.append(future_value)
+future_value = torch.cat(batch_outputs,dim=0)
+
+data = torch.cat((base_data,future_value),dim=1)
+dataset = TensorDataset(data)
+batch_size = 100000
+batch_count = (len(dataset) // batch_size) + 1
+dataloader = DataLoader(dataset, batch_size, shuffle=True)
+
+# os.system('clear')
+dt = 0.2
+discount = 0.01
+gamma = 1 - dt*discount
+epoch_count = 100000
 
 print('Training...')
 for epoch in range(epoch_count):
 	total_loss = 0
-	for batch, cpu_data in enumerate(dataloader):
-		n = cpu_data.shape[0]
+	for batch, batch_data in enumerate(dataloader):
+		data: Tensor = batch_data[0].to(device)
+		n = data.shape[0]
 		optimizer.zero_grad()
-		data: Tensor = cpu_data.to(device)
 		state_actions = data[:,0:20]
 		output = model(state_actions)
 		state = data[:,0:16]
 		present_score = score(state)
-		future = data[:,20:36] 
-		future_score = score(future)
+		future_state = data[:,20:36] 
+		future_score = score(future_state)
 		reward = future_score - present_score
-		with torch.no_grad():
-			future_value = 0
-			# future_value = old_model.value(future)
+		future_value = data[:,36].unsqueeze(1)
 		target = reward + gamma*future_value
 		loss = F.mse_loss(output, target, reduction='sum')
 		loss.backward()
@@ -169,11 +175,11 @@ for epoch in range(epoch_count):
 		# 	message += f'Loss: {batch_mse}'
 		# 	print(message)
 	epoch_mse = total_loss / len(dataset)
+	if epoch_mse < best_mse:
+		best_mse = epoch_mse
+		save_checkpoint()
 	message = ''
 	message += f'Epoch {epoch+1}, '
 	message += f'Loss: {epoch_mse:08f}, '
 	message += f'Best: {best_mse:08f} '
 	print(message)
-	if epoch_mse < best_mse:
-		best_mse = epoch_mse
-		save_checkpoint()
