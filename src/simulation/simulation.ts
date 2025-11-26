@@ -9,7 +9,7 @@ import { DefaultEventsMap, Socket } from 'socket.io'
 
 export class Simulation {
   static timeScale = 1
-  static timeStep = 0.04
+  static timeStep = 0.04 // 0.20
   world = new World()
   model = new Model()
   collider: Collider
