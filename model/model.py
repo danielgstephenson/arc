@@ -18,9 +18,9 @@ import matplotlib.pyplot as plt
 # old_checkpoint_path = '/teamspace/studios/this_studio/arc/model/checkpoint0.pt'
 # json_path = '/teamspace/studios/this_studio/arc/model/parameters.json'
 data_path = '../data.csv'
-checkpoint_path = 'checkpoint.pt'
-old_checkpoint_path = 'checkpoint0.pt'
-json_path = 'parameters.json'
+checkpoint_path = './checkpoint.pt'
+old_checkpoint_path = './checkpoint0.pt'
+json_path = './parameters.json'
 
 print('Loading Data...')
 df = pd.read_csv(data_path, header=None)
@@ -117,7 +117,6 @@ if os.path.exists(old_checkpoint_path):
 	old_checkpoint = torch.load(old_checkpoint_path, weights_only=False)
 	old_model.load_state_dict(old_checkpoint['state_dict'])
 
-# Pre-calculate value predictions
 print('Pre-Calculating Values')
 base_data: Tensor = torch.tensor(df.to_numpy(),dtype=torch.float64)
 precal_batch_size = 10000
