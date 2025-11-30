@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from numpy import block, r_, sin, cos
 import os
+import sys
 import json
 from collections import OrderedDict
 import matplotlib.pyplot as plt
@@ -122,8 +123,8 @@ step_count = 100000
 
 print('Training...')
 for step in range(step_count):
+	best_mse = 1000000
 	for epoch in range(epoch_count):
-		best_mse = 1000000
 		total_loss = 0
 		for batch, batch_data in enumerate(dataloader):
 			data: Tensor = batch_data[0].to(device)
@@ -145,22 +146,25 @@ for step in range(step_count):
 			batch_loss = loss.detach().cpu().numpy()
 			batch_mse = batch_loss / n
 			total_loss += batch_loss
-			# if batch % 1 == 0:
-			# 	message = ''
-			# 	message += f'Step {step+1}, '
-			# 	message += f'Epoch {epoch+1}, '
-			# 	message += f'Batch {batch+1:02d} / {batch_count}, '
-			# 	message += f'Loss: {batch_mse}'
-			# 	print(message)
+			if batch % 1 == 0:
+				message = ''
+				message += f'Step {step+1}, '
+				message += f'Epoch {epoch+1}, '
+				message += f'Batch {batch+1} / {batch_count}, '
+				message += f'Loss: {batch_mse:08f}                    '
+				sys.stdout.write(f'\r{message}')
+				sys.stdout.flush()
 		epoch_mse = total_loss / len(dataset)
 		if epoch_mse < best_mse:
 			best_mse = epoch_mse
 			save_checkpoint()
 		message = ''
+		message += f'Step {step+1}, '
 		message += f'Epoch {epoch+1}, '
 		message += f'Loss: {epoch_mse:08f}, '
-		message += f'Best: {best_mse:08f} '
-		print(message)
+		message += f'Best: {best_mse:08f}               '
+		sys.stdout.write(f'\r{message}\n')
+		sys.stdout.flush()
 		if epoch_mse < 5:
 			old_model.load_state_dict(model.state_dict())
 			break
