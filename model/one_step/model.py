@@ -15,8 +15,12 @@ import matplotlib.pyplot as plt
 
 data_path = '../data.csv'
 checkpoint_path = './checkpoint.pt'
-old_checkpoint_path = './checkpoint.pt'
+old_checkpoint_path = './checkpoint1.pt'
 json_path = './parameters.json'
+
+print('Loading Data...')
+df = pd.read_csv(data_path, header=None)
+print('Data Loaded')
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
@@ -86,6 +90,7 @@ def score(states: Tensor) -> Tensor:
 def save_checkpoint():
 	checkpoint = { 
 		'state_dict': model.state_dict(),
+		'best_mse': best_mse
 	}
 	torch.save(checkpoint,checkpoint_path)
 	ordered_dict = OrderedDict()
@@ -99,68 +104,80 @@ old_model = ActionValueModel().to(device).eval()
 model = ActionValueModel().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+best_mse = 1000000
 if os.path.exists(checkpoint_path):
 	checkpoint = torch.load(checkpoint_path, weights_only=False)
 	model.load_state_dict(checkpoint['state_dict'])
+	best_mse = checkpoint['best_mse']
 if os.path.exists(old_checkpoint_path):
 	old_checkpoint = torch.load(old_checkpoint_path, weights_only=False)
 	old_model.load_state_dict(old_checkpoint['state_dict'])
 
-print('Loading Data...')
-df = pd.read_csv(data_path, header=None)
-data = torch.tensor(df.to_numpy(),dtype=torch.float64)
+print('Precalculating Values...')
+base_data: Tensor = torch.tensor(df.to_numpy(),dtype=torch.float64)
+precal_batch_size = 10000
+precal_batch_count = (base_data.shape[0] // precal_batch_size) + 1
+future_state = base_data[:,20:36]
+precal_dataset = TensorDataset(future_state)
+precal_dataloader = DataLoader(precal_dataset, batch_size=10000, shuffle=False)
+batch_outputs = []
+with torch.no_grad():
+	for batch, data_array in enumerate(precal_dataloader):
+		future_state = data_array[0].to(device)
+		# print(f'Pre-Calculate Batch {batch} / {precal_batch_count}')
+		future_value = old_model.value(future_state).detach().cpu()
+		batch_outputs.append(future_value)
+future_value = torch.cat(batch_outputs,dim=0)
+
+# Precalutate rewards and targets...
+
+data = torch.cat((base_data,future_value),dim=1)
 dataset = TensorDataset(data)
-batch_size = 10000
+batch_size = 1000000
 batch_count = (len(dataset) // batch_size) + 1
 dataloader = DataLoader(dataset, batch_size, shuffle=True)
-print('Data Loaded')
+
 
 # os.system('clear')
-discount = 0.9
+dt = 0.2
+discount = 0.01
+gamma = 1 - dt*discount
 epoch_count = 100000
-step_count = 100000
 
 print('Training...')
-for step in range(step_count):
-	for epoch in range(epoch_count):
-		best_mse = 1000000
-		total_loss = 0
-		for batch, batch_data in enumerate(dataloader):
-			data: Tensor = batch_data[0].to(device)
-			n = data.shape[0]
-			optimizer.zero_grad()
-			state_actions = data[:,0:20]
-			output = model(state_actions)
-			state = data[:,0:16]
-			present_score = score(state)
-			future_state = data[:,20:36] 
-			future_score = score(future_state)
-			reward = future_score - present_score
-			with torch.no_grad():
-				future_value = old_model.value(future_state)
-			target = reward + discount*future_value
-			loss = F.mse_loss(output, target, reduction='sum')
-			loss.backward()
-			optimizer.step()
-			batch_loss = loss.detach().cpu().numpy()
-			batch_mse = batch_loss / n
-			total_loss += batch_loss
-			# if batch % 1 == 0:
-			# 	message = ''
-			# 	message += f'Step {step+1}, '
-			# 	message += f'Epoch {epoch+1}, '
-			# 	message += f'Batch {batch+1:02d} / {batch_count}, '
-			# 	message += f'Loss: {batch_mse}'
-			# 	print(message)
-		epoch_mse = total_loss / len(dataset)
-		if epoch_mse < best_mse:
-			best_mse = epoch_mse
-			save_checkpoint()
-		message = ''
-		message += f'Epoch {epoch+1}, '
-		message += f'Loss: {epoch_mse:08f}, '
-		message += f'Best: {best_mse:08f} '
-		print(message)
-		if epoch_mse < 5:
-			old_model.load_state_dict(model.state_dict())
-			break
+for epoch in range(epoch_count):
+	total_loss = 0
+	for batch, batch_data in enumerate(dataloader):
+		data: Tensor = batch_data[0].to(device)
+		n = data.shape[0]
+		optimizer.zero_grad()
+		state_actions = data[:,0:20]
+		output = model(state_actions)
+		state = data[:,0:16]
+		present_score = score(state)
+		future_state = data[:,20:36] 
+		future_score = score(future_state)
+		reward = future_score - present_score
+		future_value = data[:,36].unsqueeze(1)
+		target = reward + gamma*future_value
+		loss = F.mse_loss(output, target, reduction='sum')
+		loss.backward()
+		optimizer.step()
+		batch_loss = loss.detach().cpu().numpy()
+		batch_mse = batch_loss / n
+		total_loss += batch_loss
+		# if batch % 1 == 0:
+		# 	message = ''
+		# 	message += f'Epoch {epoch+1}, '
+		# 	message += f'Batch {batch+1:02d} / {batch_count}, '
+		# 	message += f'Loss: {batch_mse}'
+		# 	print(message)
+	epoch_mse = total_loss / len(dataset)
+	if epoch_mse < best_mse:
+		best_mse = epoch_mse
+		save_checkpoint()
+	message = ''
+	message += f'Epoch {epoch+1}, '
+	message += f'Loss: {epoch_mse:08f}, '
+	message += f'Best: {best_mse:08f} '
+	print(message)
