@@ -10,7 +10,6 @@ import fs from 'fs-extra'
 export class DataGenerator extends Simulation {
   writeStream: fs.WriteStream
   filePath = './data.csv'
-  maxStep = 4
 
   constructor () {
     super()
@@ -28,7 +27,7 @@ export class DataGenerator extends Simulation {
   generate (): void {
     this.step()
     const fighters = [...this.fighters.values()]
-    const spawnDistance = 40
+    const spawnDistance = Math.random() < 0.5 ? 40 : 20
     const spawnReach = 10
     const fighterPositions = range(2).map(_ => {
       const distance = spawnDistance * Math.random()
@@ -81,14 +80,14 @@ export class DataGenerator extends Simulation {
     const fighters = [...this.fighters.values()]
     fighters.forEach((fighter, i) => {
       if (fighter.dead) {
-        // this.respawn(fighter)
+        this.respawn(fighter)
       }
     })
   }
 
   respawn (fighter: Fighter): void {
     super.respawn(fighter)
-    const spawnRadius = Math.min(50, Arena.size) - Blade.radius
+    const spawnRadius = Math.min(35, Arena.size) - Blade.radius
     fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)

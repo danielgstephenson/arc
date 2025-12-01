@@ -165,6 +165,6 @@ for step in range(step_count):
 		message += f'Best: {best_mse:08f}               '
 		sys.stdout.write(f'\r{message}\n')
 		sys.stdout.flush()
-		if epoch_mse < 5:
+		if epoch_mse < 2:
 			old_model.load_state_dict(model.state_dict())
 			break
