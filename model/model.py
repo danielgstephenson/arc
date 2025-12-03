@@ -112,8 +112,8 @@ df = pd.read_csv(data_path, header=None)
 data = torch.tensor(df.to_numpy(),dtype=torch.float64)
 dataset = TensorDataset(data)
 batch_size = 10000
-batch_count = (len(dataset) // batch_size) + 1
-dataloader = DataLoader(dataset, batch_size, shuffle=True)
+batch_count = (len(dataset) // batch_size)
+dataloader = DataLoader(dataset, batch_size, shuffle=True, drop_last=True)
 print('Data Loaded')
 
 # os.system('clear')
@@ -129,8 +129,6 @@ print('Training...')
 for epoch in range(10000000):
 	step_epoch += 1
 	for batch, batch_data in enumerate(dataloader):
-		if batch + 1 == batch_count:
-			break
 		data: Tensor = batch_data[0].to(device)
 		n = data.shape[0]
 		optimizer.zero_grad()
@@ -154,16 +152,15 @@ for epoch in range(10000000):
 			best_count = 0
 		else:
 			best_count += 1
-		if batch % 1 == 0:
-			message = ''
-			message += f'Step {step}, '
-			message += f'Epoch {step_epoch}, '
-			message += f'Batch {batch+1:03} / {batch_count - 1}, '
-			message += f'Loss: {batch_mse:08f}, '
-			message += f'Best: {best_mse:08f}, '
-			message += f'Count: {best_count} / {max_best_count}'
-			print(message)
-		if best_count > max_best_count:
+		message = ''
+		message += f'Step {step}, '
+		message += f'Epoch {step_epoch}, '
+		message += f'Batch {batch+1:03} / {batch_count}, '
+		message += f'Loss: {batch_mse:.4f}, '
+		message += f'Best: {best_mse:.4f}, '
+		message += f'Count: {best_count:03} / {max_best_count}'
+		print(message)
+		if best_count >= max_best_count:
 			old_model.load_state_dict(best_state_dict)
 			best_mse = 10000
 			step += 1
