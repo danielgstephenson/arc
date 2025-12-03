@@ -162,6 +162,7 @@ for epoch in range(10000000):
 		print(message)
 		if best_count >= max_best_count:
 			old_model.load_state_dict(best_state_dict)
+			optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 			best_mse = 10000
 			step += 1
 			step_epoch = 0
