@@ -1,10 +1,9 @@
 import { Vec2 } from 'planck'
 import { Simulation } from './simulation'
-import { randomDir, range } from '../math'
+import { randomDir, range, sample } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
-import { actionVectors } from '../actionVectors'
 import fs from 'fs-extra'
 
 export class DataGenerator extends Simulation {
@@ -27,9 +26,9 @@ export class DataGenerator extends Simulation {
   generate (): void {
     this.step()
     const fighters = [...this.fighters.values()]
-    const spawnDistance = Math.random() < 0.5 ? 40 : 20
     const spawnReach = 10
     const fighterPositions = range(2).map(_ => {
+      const spawnDistance = sample([5, 10, 20, 50])
       const distance = spawnDistance * Math.random()
       return Vec2.mul(distance, randomDir())
     })
@@ -45,6 +44,9 @@ export class DataGenerator extends Simulation {
       const weaponSpeed = 20 * Math.random()
       return Vec2.mul(weaponSpeed, randomDir())
     })
+    const s00 = this.getState(fighters[0])
+    const s10 = this.getState(fighters[1])
+    const data = [...s00, ...s10]
     range(9).forEach(a0 => {
       range(9).forEach(a1 => {
         const a = [a0, a1]
@@ -55,19 +57,15 @@ export class DataGenerator extends Simulation {
           fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
           fighters[i].action = a[i]
         })
-        const s00 = this.getState(fighters[0])
-        const s10 = this.getState(fighters[1])
-        const v0 = actionVectors[a0]
-        const v1 = actionVectors[a1]
-        const data = [...s00, ...s10, v0.x, v0.y, v1.x, v1.y]
         this.step()
         const s01 = this.getState(fighters[0])
         const s11 = this.getState(fighters[1])
         data.push(...s01, ...s11)
-        const dataString = data.join(',') + '\n'
-        this.writeStream.write(dataString)
       })
     })
+    const fixedDecimals = data.map(x => x.toFixed(7))
+    const dataString = fixedDecimals.join(',') + '\n'
+    this.writeStream.write(dataString)
     setTimeout(() => this.generate(), 0)
   }
 
@@ -87,7 +85,7 @@ export class DataGenerator extends Simulation {
 
   respawn (fighter: Fighter): void {
     super.respawn(fighter)
-    const spawnRadius = Math.min(35, Arena.size) - Blade.radius
+    const spawnRadius = Math.min(40, Arena.size) - Blade.radius
     fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)

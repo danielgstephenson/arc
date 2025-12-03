@@ -21,14 +21,14 @@ json_path = './parameters.json'
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
-torch.set_default_dtype(torch.float64)
+torch.set_default_dtype(torch.float32)
 torch.set_printoptions(sci_mode=False)
 
 move_vector_array = [
 	[np.round(cos(i/4*pi),6), np.round(sin(i/4*pi),6)] 
 	for i in range(8)]
 action_array = np.concatenate(([[0,0]],move_vector_array)).tolist()
-action_vectors = torch.tensor(action_array,dtype=torch.float64).to(device)
+action_vectors = torch.tensor(action_array,dtype=torch.float32).to(device)
 action_profiles = torch.tensor([
 	action_array[i] + action_array[j]
 	for i in range(9) for j in range(9)
@@ -109,7 +109,7 @@ if os.path.exists(old_checkpoint_path):
 
 print('Loading Data...')
 df = pd.read_csv(data_path, header=None)
-data = torch.tensor(df.to_numpy(),dtype=torch.float64)
+data = torch.tensor(df.to_numpy(),dtype=torch.float32)
 dataset = TensorDataset(data)
 batch_size = 10000
 batch_count = (len(dataset) // batch_size)

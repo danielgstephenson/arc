@@ -2,6 +2,7 @@ import { Server } from './server'
 import { Server as SocketIoServer } from 'socket.io'
 import { Simulation } from './simulation/simulation'
 import { Trial } from './simulation/trial'
+import { DataGenerator } from './simulation/dataGenerator'
 
 export class Messenger {
   server: Server
@@ -10,7 +11,7 @@ export class Messenger {
 
   constructor (server: Server) {
     console.log('messenger')
-    this.simulation = new Trial()
+    this.simulation = new DataGenerator()
     this.server = server
     this.io = new SocketIoServer(server.httpServer)
     this.setupIo()
