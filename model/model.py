@@ -121,11 +121,11 @@ discount = 0.99
 epoch_count = 100000
 step = 1
 best_mse = 10000
+step_epoch = 0
 
 print('Training...')
 for epoch in range(epoch_count):
-	sys.stdout.write('\n')
-	sys.stdout.flush()
+	step_epoch += 1 
 	for batch, batch_data in enumerate(dataloader):
 		data: Tensor = batch_data[0].to(device)
 		n = data.shape[0]
@@ -148,17 +148,16 @@ for epoch in range(epoch_count):
 			best_mse = batch_mse
 		if batch % 1 == 0:
 			message = ''
-			message += f'Step {step+1}, '
-			message += f'Epoch {epoch+1}, '
-			message += f'Batch {batch+1} / {batch_count}, '
-			message += f'Loss: {batch_mse:08f}                    '
-			sys.stdout.write(f'\r{message}')
-			sys.stdout.flush()
-		if batch_mse < 0.01:
+			message += f'Step {step}, '
+			message += f'Epoch {step_epoch}, '
+			message += f'Batch {batch+1:03} / {batch_count}, '
+			message += f'Loss: {batch_mse:08f}, '
+			message += f'Best: {best_mse:08f}'
+			print(message)
+		if batch_mse < 0.02:
 			old_model.load_state_dict(model.state_dict())
 			best_mse = 10000
 			step += 1
+			step_epoch = 0
 			save_checkpoint()
-			sys.stdout.write('\n')
-			sys.stdout.flush()
-
+			break
