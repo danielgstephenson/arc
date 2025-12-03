@@ -129,7 +129,7 @@ print('Training...')
 for epoch in range(10000000):
 	step_epoch += 1
 	for batch, batch_data in enumerate(dataloader):
-		if batch == batch_count:
+		if batch + 1 == batch_count:
 			break
 		data: Tensor = batch_data[0].to(device)
 		n = data.shape[0]
