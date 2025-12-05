@@ -9,6 +9,8 @@ export interface FighterSummary {
   weapon: Vec2
   torsoColor: string
   weaponColor: string
+  history: Vec2[]
+  weaponHistory: Vec2[]
 }
 
 export interface SimulationSummary {

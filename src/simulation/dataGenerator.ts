@@ -7,6 +7,7 @@ import { Blade } from '../features/blade'
 import fs from 'fs-extra'
 
 export class DataGenerator extends Simulation {
+  timeStep = 0.1
   writeStream: fs.WriteStream
   filePath = './data.csv'
 

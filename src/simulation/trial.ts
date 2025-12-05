@@ -6,7 +6,7 @@ import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
 
 export class Trial extends Simulation {
-  filePath = './data.csv'
+  timeStep = 0.04
   currentStep = 0
   maxStep = 4
   bot: Fighter

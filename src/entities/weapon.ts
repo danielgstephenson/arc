@@ -9,7 +9,7 @@ export class Weapon extends Entity {
   blade: Blade
   movePower = 4
   moveDir = new Vec2(0, 0)
-  color = 'hsla(220, 50%, 40%, 0.5)'
+  color = 'hsl(220, 50%, 40%)'
 
   constructor (fighter: Fighter) {
     super(fighter.simulation, {

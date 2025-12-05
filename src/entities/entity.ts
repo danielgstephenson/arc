@@ -8,6 +8,7 @@ export class Entity {
   force = Vec2.zero()
   label = 'actor'
   removed = false
+  history: Vec2[] = []
 
   constructor (simulation: Simulation, bodyDef: BodyDef) {
     this.simulation = simulation
@@ -26,7 +27,13 @@ export class Entity {
     return fixtures
   }
 
-  preStep (dt: number): void {}
+  preStep (dt: number): void {
+    const position = Vec2.clone(this.body.getPosition())
+    this.history.unshift(position)
+    if (this.history.length > 10) {
+      this.history = this.history.slice(0, 10)
+    }
+  }
 
   postStep (dt: number): void {
     if (this.removed) {

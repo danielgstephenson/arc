@@ -152,7 +152,8 @@ for epoch in range(10000000):
             save_checkpoint()
             break
 
-example_inputs = torch.randn(1,16).to(device)
+example_inputs = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
+example_inputs.shape
 model(example_inputs)
 onnx_program = torch.onnx.export(model, example_inputs, dynamo=True)
 onnx_program.save('model.onnx')

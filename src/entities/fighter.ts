@@ -43,7 +43,9 @@ export class Fighter extends Entity {
       torso: this.body.getPosition(),
       weapon: this.weapon.body.getPosition(),
       torsoColor: this.color,
-      weaponColor: this.weapon.color
+      weaponColor: this.weapon.color,
+      history: this.history,
+      weaponHistory: this.weapon.history
     }
   }
 

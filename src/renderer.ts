@@ -79,6 +79,14 @@ export class Renderer {
 
   drawBlade (fighter: FighterSummary): void {
     this.resetContext()
+    const L = fighter.weaponHistory.length
+    fighter.weaponHistory.forEach((position, i) => {
+      const a = 0.02 * (L - i) / L
+      this.context.fillStyle = `hsla(0, 0%, 50%, ${a})`
+      this.context.beginPath()
+      this.context.arc(position.x, position.y, Blade.radius, 0, 2 * Math.PI)
+      this.context.fill()
+    })
     this.context.fillStyle = fighter.weaponColor
     this.context.beginPath()
     this.context.arc(fighter.weapon.x, fighter.weapon.y, Blade.radius, 0, 2 * Math.PI)
@@ -87,6 +95,15 @@ export class Renderer {
 
   drawTorso (fighter: FighterSummary): void {
     this.resetContext()
+    this.context.fillStyle = fighter.torsoColor
+    const L = fighter.history.length
+    fighter.history.forEach((position, i) => {
+      const a = 0.02 * (L - i) / L
+      this.context.fillStyle = `hsla(0, 0%, 50%, ${a})`
+      this.context.beginPath()
+      this.context.arc(position.x, position.y, Torso.radius, 0, 2 * Math.PI)
+      this.context.fill()
+    })
     this.context.fillStyle = fighter.torsoColor
     this.context.beginPath()
     this.context.arc(fighter.torso.x, fighter.torso.y, Torso.radius, 0, 2 * Math.PI)
@@ -102,8 +119,9 @@ export class Renderer {
   }
 
   setupCanvas (): void {
-    this.canvas.width = window.innerWidth
-    this.canvas.height = window.innerHeight
+    this.canvas.width = window.innerWidth / 5
+    this.canvas.height = window.innerHeight / 5
+    // this.context.imageSmoothingEnabled = false
   }
 
   resetContext (): void {

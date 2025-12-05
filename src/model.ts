@@ -15,7 +15,7 @@ export class Model {
 
   constructor () {
     this.loadParameters()
-    void this.startSession()
+    // void this.startSession()
   }
 
   async startSession (): Promise<void> {
