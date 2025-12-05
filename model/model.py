@@ -34,55 +34,36 @@ action_profiles = torch.tensor([
 	for i in range(9) for j in range(9)
 ]).to(device)
 
-class ActionValueModel(torch.nn.Module):
+class ValueModel(torch.nn.Module):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.activation = torch.nn.LeakyReLU(negative_slope=0.01)
-		n0 = 20
-		n1 = 100
-		n2 = 100
-		n3 = 100
-		n4 = 100
-		n5 = 1
-		self.h0 = nn.Linear(n0, n1)
-		self.h1 = nn.Linear(n1, n2)
-		self.h2 = nn.Linear(n2, n3)
-		self.h3 = nn.Linear(n3, n4)
-		self.h4 = nn.Linear(n4, n5)
-	def forward(self, state_actions: Tensor) -> Tensor:
-		layer0: Tensor = self.activation(self.h0(state_actions))
-		layer1: Tensor = self.activation(self.h1(layer0))
-		layer2: Tensor = self.activation(self.h2(layer1))
-		layer3: Tensor = self.activation(self.h3(layer2))
-		return self.h4(layer3)
+		n0 = 16
+		k = 20
+		self.h0 = nn.Linear(n0, k)
+		self.h1 = nn.Linear(n0 + 1*k, k)
+		self.h2 = nn.Linear(n0 + 2*k, k)
+		self.h3 = nn.Linear(n0 + 3*k, k)
+		self.h4 = nn.Linear(n0 + 4*k, 1)
+	def forward(self, state: Tensor) -> Tensor:
+		y0: Tensor = self.activation(self.h0(state))
+		x1 = torch.cat((state, y0), dim=1)
+		y1: Tensor = self.activation(self.h1(x1))
+		x2 = torch.cat((x1, y1), dim=1)
+		y2: Tensor = self.activation(self.h2(x2))
+		x3 = torch.cat((x2, y2), dim=1)
+		y3: Tensor = self.activation(self.h3(x3))
+		x4 = torch.cat((x3, y3), dim=1)
+		return self.h4(x4)
 	def __call__(self, *args, **kwds) -> Tensor:
 		return super().__call__(*args, **kwds)
-	def value(self, states: Tensor) -> Tensor:
+	def maximin(self, states: Tensor) -> Tensor:
 		n = states.shape[0]
-		s = states.repeat_interleave(repeats=81,dim=0)
-		a = action_profiles.repeat(n,1)
-		state_actions = torch.cat((s,a),dim=1) 
-		action_values = self(state_actions).reshape(-1,9,9)
-		mins = torch.amin(action_values,2)
+		x = states.reshape(-1,16)
+		values = self(x)
+		value_matrices = values.reshape(n,9,9)
+		mins = torch.amin(value_matrices,2)
 		return torch.amax(mins,1).unsqueeze(1)
-
-def score(states: Tensor) -> Tensor:
-	state0 = states[:,0:8]
-	state1 = states[:,8:16]
-	torsoPos0 = state0[:,0:2]
-	torsoPos1 = state1[:,0:2]
-	dist0 = torch.sqrt(torch.sum(torsoPos0**2,dim=1))
-	dist1 = torch.sqrt(torch.sum(torsoPos1**2,dim=1))
-	bladePos0 = state0[:,4:6]
-	bladePos1 = state1[:,4:6]
-	gapVec0 = torsoPos0 - bladePos1
-	gapVec1 = torsoPos1 - bladePos0
-	gap0 = torch.sqrt(torch.sum(gapVec0**2,dim=1))
-	gap1 = torch.sqrt(torch.sum(gapVec1**2,dim=1))
-	death0 = 1*(gap0 < 1.5)
-	death1 = 1*(gap1 < 1.5)
-	score = dist1 - dist0 + 100*(death1 - death0)
-	return score.unsqueeze(1)
 
 def save_checkpoint():
 	checkpoint = { 
@@ -96,17 +77,6 @@ def save_checkpoint():
 	with open(json_path,'w') as file: 
 		json.dump(ordered_dict, file, indent=4)
 
-old_model = ActionValueModel().to(device).eval()
-model = ActionValueModel().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-if os.path.exists(checkpoint_path):
-	checkpoint = torch.load(checkpoint_path, weights_only=False)
-	model.load_state_dict(checkpoint['state_dict'])
-if os.path.exists(old_checkpoint_path):
-	old_checkpoint = torch.load(old_checkpoint_path, weights_only=False)
-	old_model.load_state_dict(old_checkpoint['state_dict'])
-
 print('Loading Data...')
 df = pd.read_csv(data_path, header=None)
 data = torch.tensor(df.to_numpy(),dtype=torch.float32)
@@ -116,14 +86,29 @@ batch_count = (len(dataset) // batch_size)
 dataloader = DataLoader(dataset, batch_size, shuffle=True, drop_last=True)
 print('Data Loaded')
 
+old_model = ValueModel().to(device).eval()
+model = ValueModel().to(device)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+if os.path.exists(checkpoint_path):
+	checkpoint = torch.load(checkpoint_path, weights_only=False)
+	model.load_state_dict(checkpoint['state_dict'])
+if os.path.exists(old_checkpoint_path):
+	old_checkpoint = torch.load(old_checkpoint_path, weights_only=False)
+	old_model.load_state_dict(old_checkpoint['state_dict'])
+
 # os.system('clear')
 discount = 0.99
 step = 1
-best_mse = 10000
+best_mse = 1000000
 step_epoch = 0
 best_count = 0
-max_best_count = 2 * batch_count
+max_best_count = 100
 best_state_dict = model.state_dict()
+
+# Verify the maximin process.
+# Start with a larger timestep?
+
 
 print('Training...')
 for epoch in range(10000000):
@@ -132,16 +117,13 @@ for epoch in range(10000000):
 		data: Tensor = batch_data[0].to(device)
 		n = data.shape[0]
 		optimizer.zero_grad()
-		state_actions = data[:,0:20]
-		output = model(state_actions)
 		state = data[:,0:16]
-		present_score = score(state)
-		future_state = data[:,20:36] 
-		future_score = score(future_state)
-		reward = future_score - present_score
+		output = model(state)
+		reward = data[:,16].unsqueeze(1)
+		future_states = data[:,17:]
 		with torch.no_grad():
-			future_value = old_model.value(future_state)
-		target = reward + discount*future_value
+			future_value = old_model.maximin(future_states)
+		target = (1-discount)*reward + discount*future_value
 		loss = F.mse_loss(output, target, reduction='mean')
 		loss.backward()
 		optimizer.step()
@@ -162,8 +144,9 @@ for epoch in range(10000000):
 		print(message)
 		if best_count >= max_best_count:
 			old_model.load_state_dict(best_state_dict)
-			optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-			best_mse = 10000
+			# optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+			best_mse = 1000000
+			best_count = 0
 			step += 1
 			step_epoch = 0
 			save_checkpoint()

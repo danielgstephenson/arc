@@ -8,8 +8,8 @@ import { Model } from '../model'
 import { DefaultEventsMap, Socket } from 'socket.io'
 
 export class Simulation {
-  static timeScale = 1
-  static timeStep = 0.04
+  timeScale = 1
+  timeStep = 0.04
   world = new World()
   model = new Model()
   collider: Collider
@@ -31,12 +31,12 @@ export class Simulation {
   }
 
   start (): void {
-    setInterval(() => this.step(), 1000 * Simulation.timeStep / Simulation.timeScale)
+    setInterval(() => this.step(), 1000 * this.timeStep / this.timeScale)
   }
 
   step (): void {
     if (!this.active) return
-    const dt = Simulation.timeStep
+    const dt = this.timeStep
     this.preStep(dt)
     this.entities.forEach(entity => entity.preStep(dt))
     this.entities.forEach(entity => entity.body.applyForce(entity.force, Vec2.zero()))

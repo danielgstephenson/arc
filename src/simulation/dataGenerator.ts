@@ -24,11 +24,9 @@ export class DataGenerator extends Simulation {
   }
 
   generate (): void {
-    this.step()
     const fighters = [...this.fighters.values()]
-    const spawnReach = 10
     const fighterPositions = range(2).map(_ => {
-      const spawnDistance = sample([5, 10, 20, 50])
+      const spawnDistance = sample([5, 10, 15, 20, 30, 50])
       const distance = spawnDistance * Math.random()
       return Vec2.mul(distance, randomDir())
     })
@@ -37,6 +35,7 @@ export class DataGenerator extends Simulation {
       return Vec2.mul(speed, randomDir())
     })
     const weaponPositions = range(2).map(i => {
+      const spawnReach = 10
       const reach = spawnReach * Math.random()
       return Vec2.combine(1, fighterPositions[i], reach, randomDir())
     })
@@ -44,9 +43,24 @@ export class DataGenerator extends Simulation {
       const weaponSpeed = 20 * Math.random()
       return Vec2.mul(weaponSpeed, randomDir())
     })
+    range(2).forEach(i => {
+      fighters[i].body.setPosition(fighterPositions[i])
+      fighters[i].body.setLinearVelocity(fighterVelocities[i])
+      fighters[i].weapon.body.setPosition(weaponPositions[i])
+      fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
+      fighters[i].action = 0
+    })
+    this.step()
+    range(2).forEach(i => {
+      fighterPositions[i] = fighters[i].body.getPosition()
+      fighterVelocities[i] = fighters[i].body.getLinearVelocity()
+      weaponPositions[i] = fighters[i].weapon.body.getPosition()
+      weaponVelocities[i] = fighters[i].weapon.body.getLinearVelocity()
+    })
     const s00 = this.getState(fighters[0])
     const s10 = this.getState(fighters[1])
-    const data = [...s00, ...s10]
+    const reward = this.getReward(fighters[0], fighters[1])
+    const data = [...s00, ...s10, reward]
     range(9).forEach(a0 => {
       range(9).forEach(a1 => {
         const a = [a0, a1]
@@ -67,6 +81,12 @@ export class DataGenerator extends Simulation {
     const dataString = fixedDecimals.join(',') + '\n'
     this.writeStream.write(dataString)
     setTimeout(() => this.generate(), 0)
+  }
+
+  getReward (fighter0: Fighter, fighter1: Fighter): number {
+    const position0 = fighter0.body.getPosition()
+    const position1 = fighter1.body.getPosition()
+    return Vec2.lengthOf(position1) - Vec2.lengthOf(position0)
   }
 
   preStep (dt: number): void {
