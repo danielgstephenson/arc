@@ -29,10 +29,10 @@ export class Trial extends Simulation {
 
   preStep (dt: number): void {
     super.preStep(dt)
-    const playerState = this.getState(this.player)
-    const playerAction = this.player.action
-    const botState = this.getState(this.bot)
-    this.bot.action = this.model.getAction(botState, playerState, playerAction)
+    // const playerState = this.getState(this.player)
+    // const playerAction = this.player.action
+    // const botState = this.getState(this.bot)
+    // this.bot.action = this.model.getAction(botState, playerState, playerAction)
   }
 
   postStep (dt: number): void {

@@ -2,19 +2,46 @@
 import { dot, leakyRelu, range, sample } from './math'
 import parameters from '../model/parameters.json'
 import { actionVectors } from './actionVectors'
+import * as ort from 'onnxruntime-node'
 
 export class Model {
-  static noise = 0.1
-  static discount = 0.2
   weight: number[][][] = []
   bias: number[][] = []
   flipFightersIndices = [...range(8, 15), ...range(0, 7)]
   flipXY = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14]
   negX = range(16).map(i => (-1) ** (i + 1))
   negY = range(16).map(i => (-1) ** (i))
+  session?: ort.InferenceSession
 
   constructor () {
     this.loadParameters()
+    void this.startSession()
+  }
+
+  async startSession (): Promise<void> {
+    this.session = await ort.InferenceSession.create('./model/model.onnx')
+    console.time('inference')
+    let data = Float32Array.from(range(16))
+    let tensor = new ort.Tensor('float32', data, [1, 16])
+    let feeds = { state: tensor }
+    let result = await this.session.run(feeds)
+    console.timeEnd('inference')
+    console.time('inference')
+    data = Float32Array.from(range(16))
+    tensor = new ort.Tensor('float32', data, [1, 16])
+    feeds = { state: tensor }
+    result = await this.session.run(feeds)
+    console.timeEnd('inference')
+    console.time('inference')
+    data = Float32Array.from(range(16))
+    tensor = new ort.Tensor('float32', data, [1, 16])
+    feeds = { state: tensor }
+    result = await this.session.run(feeds)
+    console.timeEnd('inference')
+    console.log('result', result)
+    console.log('linear_4', result.linear_4)
+    console.log('data', result.linear_4.data)
+    console.log('value', result.linear_4.data[0])
   }
 
   loadParameters (): void {
