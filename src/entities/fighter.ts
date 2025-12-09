@@ -38,6 +38,21 @@ export class Fighter extends Entity {
     this.force = Vec2.mul(Fighter.movePower, dir)
   }
 
+  getState (): number[] {
+    const fp = this.body.getPosition()
+    const fv = this.body.getLinearVelocity()
+    const wp = this.weapon.body.getPosition()
+    const wv = this.weapon.body.getLinearVelocity()
+    return [fp.x, fp.y, fv.x, fv.y, wp.x, wp.y, wv.x, wv.y]
+  }
+
+  setState (state: number[]): void {
+    this.body.setPosition(new Vec2(state[0], state[1]))
+    this.body.setLinearVelocity(new Vec2(state[2], state[3]))
+    this.weapon.body.setPosition(new Vec2(state[4], state[5]))
+    this.weapon.body.setLinearVelocity(new Vec2(state[6], state[7]))
+  }
+
   summarize (): FighterSummary {
     return {
       torso: this.body.getPosition(),

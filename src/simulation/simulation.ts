@@ -4,14 +4,12 @@ import { Fighter } from '../entities/fighter'
 import { Entity } from '../entities/entity'
 import { Collider } from '../colllider'
 import { SimulationSummary } from '../summaries'
-import { Model } from '../model'
 import { DefaultEventsMap, Socket } from 'socket.io'
 
 export class Simulation {
   timeScale = 1
   timeStep = 0.04
   world = new World()
-  model = new Model()
   collider: Collider
   arena: Arena
   summary: SimulationSummary
@@ -44,14 +42,6 @@ export class Simulation {
     this.entities.forEach(entity => entity.postStep(dt))
     this.summary = this.summarize()
     this.postStep(dt)
-  }
-
-  getState (fighter: Fighter): number[] {
-    const fp = fighter.body.getPosition()
-    const fv = fighter.body.getLinearVelocity()
-    const wp = fighter.weapon.body.getPosition()
-    const wv = fighter.weapon.body.getLinearVelocity()
-    return [fp.x, fp.y, fv.x, fv.y, wp.x, wp.y, wv.x, wv.y]
   }
 
   preStep (dt: number): void {}

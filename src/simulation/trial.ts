@@ -4,13 +4,17 @@ import { randomDir } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
+import { Model } from '../model'
 
 export class Trial extends Simulation {
+  model = new Model()
   timeStep = 0.04
   currentStep = 0
   maxStep = 4
   bot: Fighter
   player: Fighter
+  maxTorsoSpeed = 0
+  maxWeaponSpeed = 0
 
   constructor () {
     super()
@@ -49,14 +53,18 @@ export class Trial extends Simulation {
     this.currentStep = 0
     const fighters = [...this.fighters.values()]
     fighters.forEach(fighter => {
+      fighter.spawnPoint = Vec2.mul(0.5, randomDir())
+      fighter.body.setPosition(fighter.spawnPoint)
       this.respawn(fighter)
     })
   }
 
   respawn (fighter: Fighter): void {
     super.respawn(fighter)
-    const spawnRadius = Math.min(20, Arena.size) - Blade.radius
-    fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
+    const spawnRadius = Math.min(15, Arena.size) - Blade.radius
+    const position = fighter.body.getPosition()
+    const dir = Vec2.normalize(position)
+    fighter.spawnPoint = Vec2.combine(1, position, spawnRadius, dir)
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)
     fighter.body.setLinearVelocity(Vec2.zero())

@@ -1,31 +1,64 @@
 import { Vec2 } from 'planck'
-import { Simulation } from './simulation'
 import { randomDir, range, sample } from '../math'
-import { Fighter } from '../entities/fighter'
-import { Arena } from '../entities/arena'
-import { Blade } from '../features/blade'
 import fs from 'fs-extra'
+import { Imagination } from './imagination'
 
-export class DataGenerator extends Simulation {
-  timeStep = 0.1
+export class DataGenerator {
+  imagination = new Imagination()
   writeStream: fs.WriteStream
-  filePath = './data.csv'
+  data: number[] = []
+  filePath = './model/data.bin'
+  count = 0
 
   constructor () {
-    super()
+    this.imagination.timeStep = 0.2
     console.log('DataGenerator')
-    const fighter0 = this.addFighter(new Vec2(0, +10))
-    const fighter1 = this.addFighter(new Vec2(0, -10))
+    const fighter0 = this.imagination.addFighter(new Vec2(0, +10))
+    const fighter1 = this.imagination.addFighter(new Vec2(0, -10))
     fighter0.color = 'hsl(220,100%,40%)'
     fighter0.weapon.color = 'hsla(220, 50%, 40%, 0.5)'
     fighter1.color = 'hsl(120, 100%, 25%)'
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
-    this.writeStream = fs.createWriteStream(this.filePath, { flags: 'a' })
+    this.writeStream = fs.createWriteStream(this.filePath, { flags: 'w' })
     this.generate()
   }
 
   generate (): void {
-    const fighters = [...this.fighters.values()]
+    range(10000).forEach(i => {
+      this.reset()
+      const fighters = [...this.imagination.fighters.values()]
+      const fighterStates = [
+        fighters[0].getState(),
+        fighters[1].getState()
+      ]
+      const datum = [...fighterStates[0], ...fighterStates[1]]
+      range(9).forEach(a0 => {
+        range(9).forEach(a1 => {
+          const a = [a0, a1]
+          range(2).forEach(i => {
+            fighters[i].setState(fighterStates[i])
+            fighters[i].action = a[i]
+          })
+          this.imagination.step()
+          const newFighterStates = [
+            fighters[0].getState(),
+            fighters[1].getState()
+          ]
+          datum.push(...newFighterStates[0], ...newFighterStates[1])
+        })
+      })
+      this.data.push(...datum)
+      this.count += 1
+      if (this.count % 1000 === 0) {
+        console.log('count', this.count)
+      }
+    })
+    this.write()
+    setTimeout(() => this.generate(), 0)
+  }
+
+  reset (): void {
+    const fighters = [...this.imagination.fighters.values()]
     const fighterPositions = range(2).map(_ => {
       const spawnDistance = sample([5, 10, 15, 20, 30, 50])
       const distance = spawnDistance * Math.random()
@@ -51,67 +84,15 @@ export class DataGenerator extends Simulation {
       fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
       fighters[i].action = 0
     })
-    this.step()
-    range(2).forEach(i => {
-      fighterPositions[i] = fighters[i].body.getPosition()
-      fighterVelocities[i] = fighters[i].body.getLinearVelocity()
-      weaponPositions[i] = fighters[i].weapon.body.getPosition()
-      weaponVelocities[i] = fighters[i].weapon.body.getLinearVelocity()
-    })
-    const s00 = this.getState(fighters[0])
-    const s10 = this.getState(fighters[1])
-    const reward = this.getReward(fighters[0], fighters[1])
-    const data = [...s00, ...s10, reward]
-    range(9).forEach(a0 => {
-      range(9).forEach(a1 => {
-        const a = [a0, a1]
-        range(2).forEach(i => {
-          fighters[i].body.setPosition(fighterPositions[i])
-          fighters[i].body.setLinearVelocity(fighterVelocities[i])
-          fighters[i].weapon.body.setPosition(weaponPositions[i])
-          fighters[i].weapon.body.setLinearVelocity(weaponVelocities[i])
-          fighters[i].action = a[i]
-        })
-        this.step()
-        const s01 = this.getState(fighters[0])
-        const s11 = this.getState(fighters[1])
-        data.push(...s01, ...s11)
-      })
-    })
-    const fixedDecimals = data.map(x => x.toFixed(7))
-    const dataString = fixedDecimals.join(',') + '\n'
-    this.writeStream.write(dataString)
-    setTimeout(() => this.generate(), 0)
+    this.imagination.step()
   }
 
-  getReward (fighter0: Fighter, fighter1: Fighter): number {
-    const position0 = fighter0.body.getPosition()
-    const position1 = fighter1.body.getPosition()
-    return Vec2.lengthOf(position1) - Vec2.lengthOf(position0)
-  }
-
-  preStep (dt: number): void {
-    super.preStep(dt)
-  }
-
-  postStep (dt: number): void {
-    super.postStep(dt)
-    const fighters = [...this.fighters.values()]
-    fighters.forEach((fighter, i) => {
-      if (fighter.dead) {
-        this.respawn(fighter)
-      }
-    })
-  }
-
-  respawn (fighter: Fighter): void {
-    super.respawn(fighter)
-    const spawnRadius = Math.min(40, Arena.size) - Blade.radius
-    fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
-    fighter.body.setPosition(fighter.spawnPoint)
-    fighter.weapon.body.setPosition(fighter.spawnPoint)
-    fighter.body.setLinearVelocity(Vec2.zero())
-    fighter.weapon.body.setLinearVelocity(Vec2.zero())
-    fighter.dead = false
+  write (): void {
+    const float32Array = new Float32Array(this.data)
+    this.data = []
+    this.count = 0
+    const buffer = Buffer.from(float32Array.buffer)
+    this.writeStream.write(buffer)
+    console.log('write file')
   }
 }
