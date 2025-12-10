@@ -1,6 +1,6 @@
 import { Vec2 } from 'planck'
 import { Simulation } from './simulation'
-import { randomDir, range } from '../math'
+import { range } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'

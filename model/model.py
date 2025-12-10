@@ -74,12 +74,14 @@ def save_checkpoint():
     torch.save(checkpoint,checkpoint_path)
 
 def save_onnx():
+    print('saving onnx...')
     with contextlib.redirect_stdout(io.StringIO()):
         example_input = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
         example_input_tuple = (example_input,)
         onnx_program = torch.onnx.export(model, example_input_tuple, dynamo=True)
         if onnx_program is not None:
             onnx_program.save('model.onnx')
+    print('onnx saved')
 
 def getData()->Tensor:
     data_array = np.fromfile(data_path,dtype=np.float32,count=-1,offset=0).reshape(-1, 82*16)
@@ -96,6 +98,8 @@ if os.path.exists(checkpoint_path):
 if os.path.exists(old_checkpoint_path):
     old_checkpoint = torch.load(old_checkpoint_path, weights_only=False)
     old_model.load_state_dict(old_checkpoint['state_dict'])
+
+save_onnx()
 
 # os.system('clear')
 discount = 0.9

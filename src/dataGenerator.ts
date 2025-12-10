@@ -1,6 +1,6 @@
 import { Vec2 } from 'planck'
-import { randomDir, range, sample } from '../math'
-import { Imagination } from './imagination'
+import { randomDir, range, sample } from './math'
+import { Imagination } from './simulation/imagination'
 import { Server as SocketIoServer } from 'socket.io'
 
 export class DataGenerator {

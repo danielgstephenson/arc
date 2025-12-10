@@ -33,10 +33,7 @@ export class Trial extends Simulation {
 
   preStep (dt: number): void {
     super.preStep(dt)
-    // const playerState = this.getState(this.player)
-    // const playerAction = this.player.action
-    // const botState = this.getState(this.bot)
-    // this.bot.action = this.model.getAction(botState, playerState, playerAction)
+    this.bot.action = this.model.action
   }
 
   postStep (dt: number): void {
@@ -45,6 +42,10 @@ export class Trial extends Simulation {
     fighters.forEach(fighter => {
       if (fighter.dead) this.respawn(fighter)
     })
+    const botState = this.bot.getState()
+    const playerState = this.player.getState()
+    const state = [...botState, ...playerState]
+    void this.model.update(state)
     this.currentStep += 1
   }
 
