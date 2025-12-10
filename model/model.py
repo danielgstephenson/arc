@@ -1,23 +1,21 @@
+import array
 from math import pi
 import torch
-from torch import Tensor, nn, tensor
+from torch import Tensor, chunk, nn, tensor
 from torch.utils.data import DataLoader, TensorDataset
 import torch.nn.functional as F
 import pandas as pd
 import numpy as np
 from numpy import block, indices, r_, sin, cos
 import os
-import time
 import io
 import contextlib
-import random
+import socketio
 
-data_path = '../data.bin'
+data_path = './data.bin'
 checkpoint_path = './checkpoint0.pt'
 old_checkpoint_path = './checkpoint0.pt'
 json_path = './parameters.json'
-
-os.path.getmtime(data_path)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
@@ -72,38 +70,21 @@ def get_reward(states: Tensor)->Tensor:
     return (dist1 - dist0).unsqueeze(1)
 
 def save_checkpoint():
+    checkpoint = { 'state_dict': model.state_dict() }
+    torch.save(checkpoint,checkpoint_path)
+
+def save_onnx():
     with contextlib.redirect_stdout(io.StringIO()):
-        checkpoint = { 'state_dict': best_state_dict }
-        torch.save(checkpoint,checkpoint_path)
-        # example_input = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
-        # example_input_tuple = (example_input,)
-        # onnx_program = torch.onnx.export(model, example_input_tuple, dynamo=True)
-        # if onnx_program is not None:
-        #     onnx_program.save('model.onnx')
+        example_input = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
+        example_input_tuple = (example_input,)
+        onnx_program = torch.onnx.export(model, example_input_tuple, dynamo=True)
+        if onnx_program is not None:
+            onnx_program.save('model.onnx')
 
-print('Loading Data...')
-data_array = np.fromfile(data_path,dtype=np.float32,count=-1,offset=0).reshape(-1, 82*16)
-data = torch.tensor(data_array,dtype=torch.float32)
-dataset = TensorDataset(data)
-batch_size = 20000
-batch_count = (len(dataset) // batch_size)
-dataloader = DataLoader(dataset, batch_size, shuffle=True, drop_last=True)
-print('Data Loaded')
+def getData()->Tensor:
+    data_array = np.fromfile(data_path,dtype=np.float32,count=-1,offset=0).reshape(-1, 82*16)
+    return torch.tensor(data_array,dtype=torch.float32).to(device)
 
-states = data[:,0:16]
-n = states.shape[0]
-idxs = torch.tensor([i for i in range(n)])
-idx = random.randint(0,n)
-state = states[idx,:]
-others = states[idxs != idx, :]
-differences = others - state.unsqueeze(0).repeat(n-1,1)
-distances = torch.sqrt(torch.sum(differences**2,dim=1))
-sup_distances = torch.max(torch.abs(differences),dim=1)[0]
-sup_distances.shape
-min_index = torch.argmin(sup_distances)
-sup_distances[min_index]
-state - others[min_index]
-# torch.cat((state.unsqueeze(1),others[min_index].unsqueeze(1)),dim=1)
 
 old_model = ValueModel().to(device).eval()
 model = ValueModel().to(device)
@@ -119,44 +100,75 @@ if os.path.exists(old_checkpoint_path):
 # os.system('clear')
 discount = 0.9
 step = 1
-best_mse = 1000000
-step_epoch = 0
-best_count = 0
-best_state_dict = model.state_dict()
+
+sio = socketio.SimpleClient()
+sio.connect('http://localhost:3000')
+losses = []
+
+sio.emit('requestData')
+event = sio.receive()
+data_bytearray = bytearray(event[1])
+data = torch.frombuffer(data_bytearray,dtype=torch.float32)
+data = data.reshape(-1, 82*16).to(device)
+
+sio.emit('requestData')
+event = sio.receive()
+data_bytearray = bytearray(event[1])
+data = torch.frombuffer(data_bytearray,dtype=torch.float32)
+data = data.reshape(-1, 82*16).to(device)
+n = data.shape[0]
+optimizer.zero_grad()
+states = data[:,0:16]
+output = model(states)
+reward = get_reward(output)
+potential_futures = data[:,16:]
+with torch.no_grad():
+    n = potential_futures.shape[0]
+    x = potential_futures.reshape(-1,16)
+    potential_values = get_reward(x) # old_model(x)
+    value_matrices = potential_values.reshape(n,9,9)
+    mins = torch.amin(value_matrices,2)
+    future_value = torch.amax(mins,1).unsqueeze(1)
+target = (1-discount)*reward + discount*future_value
+loss = F.mse_loss(output, target, reduction='mean')
+loss.backward()
+optimizer.step()
+losses.append(loss.detach().cpu().numpy())
+smooth_loss = np.mean(losses[-100:])
+message = ''
+message += f'Step: {step}, '
+message += f'Loss: {smooth_loss:.5f}'
+print(message)
 
 print('Training...')
-for epoch in range(10000000):
-    for batch, batch_data in enumerate(dataloader):
-        data: Tensor = batch_data[0].to(device)
-        n = data.shape[0]
-        optimizer.zero_grad()
-        states = data[:,0:16]
-        output = model(states)
-        reward = get_reward(output)
-        potential_futures = data[:,16:]
-        with torch.no_grad():
-            n = potential_futures.shape[0]
-            x = potential_futures.reshape(-1,16)
-            potential_values = get_reward(x) # old_model(x)
-            value_matrices = potential_values.reshape(n,9,9)
-            mins = torch.amin(value_matrices,2)
-            future_value = torch.amax(mins,1).unsqueeze(1)
-        target = (1-discount)*reward + discount*future_value
-        loss = F.mse_loss(output, target, reduction='mean')
-        loss.backward()
-        optimizer.step()
-        batch_mse = loss.detach().cpu().numpy()
-        if batch_mse < best_mse:
-            best_mse = batch_mse
-            best_state_dict = model.state_dict()
-            save_checkpoint()
-            best_count = 0
-        else:
-            best_count += 1
-        message = ''
-        message += f'Epoch {epoch+1}, '
-        message += f'Batch {batch+1:03} / {batch_count}, '
-        message += f'Loss: {batch_mse:.5f}, '
-        message += f'Best: {best_mse:.5f}, '
-        message += f'Count: {best_count:03}'
-        print(message)
+for step in range(10000000000):
+    sio.emit('requestData')
+    event = sio.receive()
+    data_bytearray = bytearray(event[1])
+    data = torch.frombuffer(data_bytearray,dtype=torch.float32)
+    data = data.reshape(-1, 82*16).to(device)
+    n = data.shape[0]
+    optimizer.zero_grad()
+    states = data[:,0:16]
+    output = model(states)
+    reward = get_reward(output)
+    potential_futures = data[:,16:]
+    with torch.no_grad():
+        n = potential_futures.shape[0]
+        x = potential_futures.reshape(-1,16)
+        potential_values = get_reward(x) # old_model(x)
+        value_matrices = potential_values.reshape(n,9,9)
+        mins = torch.amin(value_matrices,2)
+        future_value = torch.amax(mins,1).unsqueeze(1)
+    target = (1-discount)*reward + discount*future_value
+    loss = F.mse_loss(output, target, reduction='mean')
+    loss.backward()
+    optimizer.step()
+    loss_value = loss.detach().cpu().numpy()
+    losses.append(loss_value)
+    smooth_loss = np.mean(losses[-20:])
+    message = ''
+    message += f'Step: {step}, '
+    message += f'Loss: {loss_value:.5f}, '
+    message += f'Smooth: {smooth_loss:.5f}'
+    print(message)

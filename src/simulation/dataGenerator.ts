@@ -1,16 +1,16 @@
 import { Vec2 } from 'planck'
 import { randomDir, range, sample } from '../math'
-import fs from 'fs-extra'
 import { Imagination } from './imagination'
+import { Server as SocketIoServer } from 'socket.io'
 
 export class DataGenerator {
   imagination = new Imagination()
-  writeStream: fs.WriteStream
-  data: number[] = []
+  io: SocketIoServer
   filePath = './model/data.bin'
   count = 0
 
-  constructor () {
+  constructor (io: SocketIoServer) {
+    this.io = io
     this.imagination.timeStep = 0.2
     console.log('DataGenerator')
     const fighter0 = this.imagination.addFighter(new Vec2(0, +10))
@@ -19,12 +19,16 @@ export class DataGenerator {
     fighter0.weapon.color = 'hsla(220, 50%, 40%, 0.5)'
     fighter1.color = 'hsl(120, 100%, 25%)'
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
-    this.writeStream = fs.createWriteStream(this.filePath, { flags: 'w' })
-    this.generate()
+    this.io.on('connection', socket => {
+      socket.on('requestData', () => {
+        socket.emit('data', this.generate())
+      })
+    })
   }
 
-  generate (): void {
-    range(10000).forEach(i => {
+  generate (): Buffer<ArrayBuffer> {
+    const data: number[] = []
+    range(1000).forEach(_ => {
       this.reset()
       const fighters = [...this.imagination.fighters.values()]
       const fighterStates = [
@@ -47,14 +51,11 @@ export class DataGenerator {
           datum.push(...newFighterStates[0], ...newFighterStates[1])
         })
       })
-      this.data.push(...datum)
-      this.count += 1
-      if (this.count % 1000 === 0) {
-        console.log('count', this.count)
-      }
+      data.push(...datum)
     })
-    this.write()
-    setTimeout(() => this.generate(), 0)
+    const float32Array = new Float32Array(data)
+    const buffer = Buffer.from(float32Array.buffer)
+    return buffer
   }
 
   reset (): void {
@@ -85,14 +86,5 @@ export class DataGenerator {
       fighters[i].action = 0
     })
     this.imagination.step()
-  }
-
-  write (): void {
-    const float32Array = new Float32Array(this.data)
-    this.data = []
-    this.count = 0
-    const buffer = Buffer.from(float32Array.buffer)
-    this.writeStream.write(buffer)
-    console.log('write file')
   }
 }

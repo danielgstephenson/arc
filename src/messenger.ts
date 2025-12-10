@@ -11,17 +11,16 @@ export class Messenger {
 
   constructor (server: Server) {
     console.log('messenger')
-    const dataGenerator = new DataGenerator()
+    this.io = new SocketIoServer(server.httpServer)
+    const dataGenerator = new DataGenerator(this.io)
     this.simulation = dataGenerator.imagination
     // this.simulation = new Trial()
     this.server = server
-    this.io = new SocketIoServer(server.httpServer)
     this.setupIo()
   }
 
   setupIo (): void {
     this.io.on('connection', socket => {
-      socket.emit('connected')
       console.log(socket.id, 'connected')
       socket.on('input', (action: number) => {
         if (this.simulation.player != null) {
