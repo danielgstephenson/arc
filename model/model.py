@@ -164,6 +164,7 @@ for step in range(10000000000):
     loss = F.mse_loss(output, target, reduction='mean')
     loss.backward()
     optimizer.step()
+    save_checkpoint()
     loss_value = loss.detach().cpu().numpy()
     losses.append(loss_value)
     smooth_loss = np.mean(losses[-20:])
