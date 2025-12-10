@@ -86,8 +86,10 @@ export class Imagination extends Simulation {
 
   respawn (fighter: Fighter): void {
     super.respawn(fighter)
-    const spawnRadius = Math.min(40, Arena.size) - Blade.radius
-    fighter.spawnPoint = Vec2.mul(spawnRadius, randomDir())
+    const spawnRadius = Math.min(15, Arena.size) - Blade.radius
+    const position = fighter.body.getPosition()
+    const dir = Vec2.normalize(position)
+    fighter.spawnPoint = Vec2.combine(1, position, spawnRadius, dir)
     fighter.body.setPosition(fighter.spawnPoint)
     fighter.weapon.body.setPosition(fighter.spawnPoint)
     fighter.body.setLinearVelocity(Vec2.zero())
