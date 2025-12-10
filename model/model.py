@@ -105,41 +105,6 @@ sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 losses = []
 
-sio.emit('requestData')
-event = sio.receive()
-data_bytearray = bytearray(event[1])
-data = torch.frombuffer(data_bytearray,dtype=torch.float32)
-data = data.reshape(-1, 82*16).to(device)
-
-sio.emit('requestData')
-event = sio.receive()
-data_bytearray = bytearray(event[1])
-data = torch.frombuffer(data_bytearray,dtype=torch.float32)
-data = data.reshape(-1, 82*16).to(device)
-n = data.shape[0]
-optimizer.zero_grad()
-states = data[:,0:16]
-output = model(states)
-reward = get_reward(output)
-potential_futures = data[:,16:]
-with torch.no_grad():
-    n = potential_futures.shape[0]
-    x = potential_futures.reshape(-1,16)
-    potential_values = get_reward(x) # old_model(x)
-    value_matrices = potential_values.reshape(n,9,9)
-    mins = torch.amin(value_matrices,2)
-    future_value = torch.amax(mins,1).unsqueeze(1)
-target = (1-discount)*reward + discount*future_value
-loss = F.mse_loss(output, target, reduction='mean')
-loss.backward()
-optimizer.step()
-losses.append(loss.detach().cpu().numpy())
-smooth_loss = np.mean(losses[-100:])
-message = ''
-message += f'Step: {step}, '
-message += f'Loss: {smooth_loss:.5f}'
-print(message)
-
 print('Training...')
 for step in range(10000000000):
     sio.emit('requestData')
