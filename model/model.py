@@ -12,11 +12,6 @@ import io
 import contextlib
 import socketio
 
-data_path = './data.bin'
-checkpoint_path = './checkpoint0.pt'
-old_checkpoint_path = './checkpoint0.pt'
-json_path = './parameters.json'
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
 torch.set_default_dtype(torch.float32)
@@ -69,11 +64,7 @@ def get_reward(states: Tensor)->Tensor:
     dist1 = torch.sqrt(torch.sum(pos1**2,dim=1))
     return (dist1 - dist0).unsqueeze(1)
 
-def save_checkpoint():
-    checkpoint = { 'state_dict': model.state_dict() }
-    torch.save(checkpoint,checkpoint_path)
-
-def save_onnx():
+def save_onnx(model: nn.Module):
     print('saving onnx...')
     with contextlib.redirect_stdout(io.StringIO()):
         example_input = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
@@ -83,62 +74,60 @@ def save_onnx():
             onnx_program.save('model.onnx')
     print('onnx saved')
 
-def getData()->Tensor:
-    data_array = np.fromfile(data_path,dtype=np.float32,count=-1,offset=0).reshape(-1, 82*16)
-    return torch.tensor(data_array,dtype=torch.float32).to(device)
+steps = 10
+models = [get_reward]
+optimizers = [0]
+for step in range(1,steps):
+    model = ValueModel().to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    models.append(model)
+    optimizers.append(optimizer)
+    checkpoint_path = f'./checkpoint{step}.pt'
+    if os.path.exists(checkpoint_path):
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
+        model.load_state_dict(checkpoint['state_dict'])
 
-
-old_model = ValueModel().to(device).eval()
-model = ValueModel().to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-if os.path.exists(checkpoint_path):
-    checkpoint = torch.load(checkpoint_path, weights_only=False)
-    model.load_state_dict(checkpoint['state_dict'])
-if os.path.exists(old_checkpoint_path):
-    old_checkpoint = torch.load(old_checkpoint_path, weights_only=False)
-    old_model.load_state_dict(old_checkpoint['state_dict'])
-
-save_onnx()
+save_onnx(models[-1])
 
 # os.system('clear')
-discount = 0.9
-step = 1
-
+discount = 1
+caution = 0.1
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
-losses = []
 
 print('Training...')
-for step in range(10000000000):
+for batch in range(10000000000):
     sio.emit('requestData')
     event = sio.receive()
     data_bytearray = bytearray(event[1])
     data = torch.frombuffer(data_bytearray,dtype=torch.float32)
     data = data.reshape(-1, 82*16).to(device)
     n = data.shape[0]
-    optimizer.zero_grad()
-    states = data[:,0:16]
-    output = model(states)
-    reward = get_reward(output)
-    potential_futures = data[:,16:]
-    with torch.no_grad():
-        n = potential_futures.shape[0]
-        x = potential_futures.reshape(-1,16)
-        potential_values = get_reward(x) # old_model(x)
-        value_matrices = potential_values.reshape(n,9,9)
-        mins = torch.amin(value_matrices,2)
-        future_value = torch.amax(mins,1).unsqueeze(1)
-    target = (1-discount)*reward + discount*future_value
-    loss = F.mse_loss(output, target, reduction='mean')
-    loss.backward()
-    optimizer.step()
-    save_checkpoint()
-    loss_value = loss.detach().cpu().numpy()
-    losses.append(loss_value)
-    smooth_loss = np.mean(losses[-20:])
-    message = ''
-    message += f'Step: {step}, '
-    message += f'Loss: {loss_value:.5f}, '
-    message += f'Smooth: {smooth_loss:.5f}'
+    message = f'Batch: {batch}, Losses:'
+    for step in range(1,steps):
+        model: ValueModel = models[step]
+        optimizer = optimizers[step]
+        optimizer.zero_grad()
+        states = data[:,0:16]
+        output = model(states)
+        reward = get_reward(output)
+        potential_futures = data[:,16:]
+        with torch.no_grad():
+            n = potential_futures.shape[0]
+            x = potential_futures.reshape(-1,16)        
+            old_model: ValueModel = models[step-1]
+            potential_values = old_model(x)
+            value_matrices = potential_values.reshape(n,9,9)
+            mins = torch.amin(value_matrices,2)
+            max_value = torch.amax(mins,1).unsqueeze(1)
+            average_value = torch.mean(mins,1).unsqueeze(1)
+            future_value = caution*average_value + (1-caution)*max_value
+        target = (1-discount)*reward + discount*future_value
+        loss = F.mse_loss(output, target, reduction='mean')
+        loss.backward()
+        optimizer.step()
+        checkpoint = { 'state_dict': model.state_dict() }
+        torch.save(checkpoint, f'./checkpoint{step}.pt')
+        loss_value = loss.detach().cpu().numpy()
+        message += f' {loss_value:05.2f}'
     print(message)

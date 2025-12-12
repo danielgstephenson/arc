@@ -1,5 +1,5 @@
 
-import { range, whichMax, whichMin } from './math'
+import { range, whichMax } from './math'
 import * as ort from 'onnxruntime-node'
 import { Imagination } from './simulation/imagination'
 
