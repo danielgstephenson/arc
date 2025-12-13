@@ -132,7 +132,13 @@ for batch in range(10000000000):
         loss.backward()
         optimizer.step()
         checkpoint = { 'state_dict': model.state_dict() }
-        torch.save(checkpoint, f'./checkpoint{step}.pt')
+        try:
+            torch.save(checkpoint, f'./checkpoint{step}.pt')
+        except KeyboardInterrupt:
+            print('\nKeyboardInterrupt detected. Saving checkpoint...')
+            torch.save(checkpoint, f'./checkpoint{step}.pt')
+            print('Checkpoint saved.')
+            raise
         loss_value = loss.detach().cpu().numpy()
         message += f' {loss_value:.1f}'
     print(message)
