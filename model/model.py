@@ -1,5 +1,6 @@
 import array
 from math import pi
+import string
 import torch
 from torch import Tensor, chunk, nn, tensor
 from torch.utils.data import DataLoader, TensorDataset
@@ -11,6 +12,7 @@ import os
 import io
 import contextlib
 import socketio
+from typing import Any
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
@@ -64,19 +66,18 @@ def get_reward(states: Tensor)->Tensor:
     dist1 = torch.sqrt(torch.sum(pos1**2,dim=1))
     return (dist1 - dist0).unsqueeze(1)
 
-def save_onnx(model: nn.Module):
+def save_onnx(model: nn.Module, filePath: str):
     print('saving onnx...')
     with contextlib.redirect_stdout(io.StringIO()):
         example_input = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
         example_input_tuple = (example_input,)
         onnx_program = torch.onnx.export(model, example_input_tuple, dynamo=True)
         if onnx_program is not None:
-            onnx_program.save('model.onnx')
-    print('onnx saved')
+            onnx_program.save(filePath)
 
 steps = 10
-models = [get_reward]
-optimizers = [0]
+models: list[Any] = [get_reward]
+optimizers: list[Any] = [0]
 for step in range(1,steps):
     model = ValueModel().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -87,18 +88,22 @@ for step in range(1,steps):
         checkpoint = torch.load(checkpoint_path, weights_only=False)
         model.load_state_dict(checkpoint['state_dict'])
 
-save_onnx(models[-1])
+print('saving onnx...')
+for step in range(1,steps):
+    save_onnx(models[step],f'model{step}.onnx')
+print('onnx saved')
 
 # os.system('clear')
 discount = 1
 caution = 0.1
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
+sio.emit('requestData')
 
 print('Training...')
 for batch in range(10000000000):
-    sio.emit('requestData')
     event = sio.receive()
+    sio.emit('requestData')
     data_bytearray = bytearray(event[1])
     data = torch.frombuffer(data_bytearray,dtype=torch.float32)
     data = data.reshape(-1, 82*16).to(device)
@@ -115,7 +120,7 @@ for batch in range(10000000000):
         with torch.no_grad():
             n = potential_futures.shape[0]
             x = potential_futures.reshape(-1,16)        
-            old_model: ValueModel = models[step-1]
+            old_model = models[step-1]
             potential_values = old_model(x)
             value_matrices = potential_values.reshape(n,9,9)
             mins = torch.amin(value_matrices,2)
