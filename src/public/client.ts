@@ -9,7 +9,7 @@ import { whichMax } from '../math'
 const renderer = new Renderer()
 const input = new Input()
 
-function update (): void {
+function sendInput (): void {
   renderer.camera.updateScale(input.zoom)
   let x = 0
   let y = 0
@@ -27,11 +27,14 @@ function update (): void {
   socket.emit('input', action)
 }
 
-setInterval(update, 20)
+setInterval(sendInput, 20)
 
 const socket = io()
 socket.on('connected', () => {
   console.log('connected')
+})
+socket.on('renderScale', (renderScale: number) => {
+  renderer.renderScale = renderScale
 })
 socket.on('summary', (summary: SimulationSummary) => {
   renderer.summary = summary

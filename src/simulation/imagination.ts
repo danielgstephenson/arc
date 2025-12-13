@@ -10,7 +10,6 @@ export class Imagination extends Simulation {
 
   constructor () {
     super()
-    console.log('Imagination')
     const fighter0 = this.addFighter(new Vec2(0, +10))
     const fighter1 = this.addFighter(new Vec2(0, -10))
     fighter0.color = 'hsl(220,100%,40%)'

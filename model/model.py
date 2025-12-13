@@ -67,7 +67,6 @@ def get_reward(states: Tensor)->Tensor:
     return (dist1 - dist0).unsqueeze(1)
 
 def save_onnx(model: nn.Module, filePath: str):
-    print('saving onnx...')
     with contextlib.redirect_stdout(io.StringIO()):
         example_input = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
         example_input_tuple = (example_input,)
@@ -75,7 +74,7 @@ def save_onnx(model: nn.Module, filePath: str):
         if onnx_program is not None:
             onnx_program.save(filePath)
 
-steps = 10
+steps = 50
 models: list[Any] = [get_reward]
 optimizers: list[Any] = [0]
 for step in range(1,steps):
@@ -85,13 +84,14 @@ for step in range(1,steps):
     optimizers.append(optimizer)
     checkpoint_path = f'./checkpoint{step}.pt'
     if os.path.exists(checkpoint_path):
+        print(f'Loading {checkpoint_path} ...')
         checkpoint = torch.load(checkpoint_path, weights_only=False)
         model.load_state_dict(checkpoint['state_dict'])
 
-print('saving onnx...')
-for step in range(1,steps):
-    save_onnx(models[step],f'model{step}.onnx')
-print('onnx saved')
+# for step in range(1,steps):
+#     fileName = f'model{step}.onnx'
+#     print(f'saving {fileName} ...')
+#     save_onnx(models[step],fileName)
 
 # os.system('clear')
 discount = 1
@@ -134,5 +134,5 @@ for batch in range(10000000000):
         checkpoint = { 'state_dict': model.state_dict() }
         torch.save(checkpoint, f'./checkpoint{step}.pt')
         loss_value = loss.detach().cpu().numpy()
-        message += f' {loss_value:05.2f}'
+        message += f' {loss_value:.1f}'
     print(message)

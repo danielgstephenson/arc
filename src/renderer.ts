@@ -13,6 +13,7 @@ export class Renderer {
   canvas: HTMLCanvasElement
   context: CanvasRenderingContext2D
   summary: SimulationSummary
+  renderScale = 1
 
   backgroundColor = 'hsl(0,0%,0%)'
   wallColor = 'hsl(0,0%,35%)'
@@ -119,8 +120,8 @@ export class Renderer {
   }
 
   setupCanvas (): void {
-    this.canvas.width = window.innerWidth / 5
-    this.canvas.height = window.innerHeight / 5
+    this.canvas.width = window.innerWidth * this.renderScale
+    this.canvas.height = window.innerHeight * this.renderScale
     // this.context.imageSmoothingEnabled = false
   }
 

@@ -12,7 +12,6 @@ export class DataGenerator {
   constructor (io: SocketIoServer) {
     this.io = io
     this.imagination.timeStep = 0.2
-    console.log('DataGenerator')
     const fighter0 = this.imagination.addFighter(new Vec2(0, +10))
     const fighter1 = this.imagination.addFighter(new Vec2(0, -10))
     fighter0.color = 'hsl(220,100%,40%)'

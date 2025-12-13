@@ -25,7 +25,6 @@ export class Simulation {
     this.arena = new Arena(this)
     this.reset()
     this.summary = this.summarize()
-    console.log('Simulation')
   }
 
   start (): void {

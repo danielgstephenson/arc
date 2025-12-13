@@ -22,6 +22,7 @@ export class Messenger {
   setupIo (): void {
     this.io.on('connection', socket => {
       console.log(socket.id, 'connected')
+      socket.emit('renderScale', this.server.config.renderScale)
       socket.on('input', (action: number) => {
         if (this.simulation.player != null) {
           this.simulation.player.action = action
