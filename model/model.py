@@ -1,4 +1,4 @@
-from math import pi
+from math import isnan, pi
 import torch
 from torch import Tensor, chunk, nn, tensor
 from torch.utils.data import DataLoader, TensorDataset
@@ -63,7 +63,7 @@ def get_reward(states: Tensor)->Tensor:
     pos1 = states[:,8:10]
     dist0 = torch.sqrt(torch.sum(pos0**2,dim=1))
     dist1 = torch.sqrt(torch.sum(pos1**2,dim=1))
-    return (dist1 - dist0).unsqueeze(1)
+    return (dist1 - 0.1*dist0).unsqueeze(1)
 
 def save_onnx(model: nn.Module, filePath: str):
     with contextlib.redirect_stdout(io.StringIO()):
@@ -81,20 +81,21 @@ for step in range(1,steps):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     models.append(model)
     optimizers.append(optimizer)
-    checkpoint_path = f'./checkpoint{step}.pt'
+    checkpoint_path = f'./checkpoints/checkpoint{step}.pt'
     if os.path.exists(checkpoint_path):
         print(f'Loading {checkpoint_path} ...')
         checkpoint = torch.load(checkpoint_path, weights_only=False)
         model.load_state_dict(checkpoint['state_dict'])
 
-# for step in range(1,steps):
-#     fileName = f'model{step}.onnx'
-#     print(f'saving {fileName} ...')
-#     save_onnx(models[step],fileName)
+for step in range(1,steps):
+    fileName = f'./onnx/model{step}.onnx'
+    print(f'saving {fileName} ...')
+    save_onnx(models[step],fileName)
 
 # os.system('clear')
 discount = 1
-caution = 0.1
+self_noise = 0
+other_noise = 0.05
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 sio.emit('requestData')
@@ -122,23 +123,27 @@ for batch in range(10000000000):
             old_model = models[step-1]
             potential_values = old_model(x)
             value_matrices = potential_values.reshape(n,9,9)
+            means = torch.mean(value_matrices,2)
             mins = torch.amin(value_matrices,2)
-            max_value = torch.amax(mins,1).unsqueeze(1)
-            average_value = torch.mean(mins,1).unsqueeze(1)
-            future_value = caution*average_value + (1-caution)*max_value
-        target = (1-discount)*reward + discount*future_value
+            action_values = other_noise*means + (1-other_noise)*mins
+            max_value = torch.amax(action_values,1).unsqueeze(1)
+            average_value = torch.mean(action_values,1).unsqueeze(1)
+            future_state_value = self_noise*average_value + (1-self_noise)*max_value
+        target = (1-discount)*reward + discount*future_state_value
         loss = F.mse_loss(output, target, reduction='mean')
         loss_value = loss.detach().cpu().numpy()
+        if math.isnan(loss_value):
+            continue
         message += f' {loss_value:.1f}'
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=400.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=50.0)
         optimizer.step()
         checkpoint = { 'state_dict': model.state_dict() }
         try:
-            torch.save(checkpoint, f'./checkpoint{step}.pt')
+            torch.save(checkpoint, f'./checkpoints/checkpoint{step}.pt')
         except KeyboardInterrupt:
             print('\nKeyboardInterrupt detected. Saving checkpoint...')
-            torch.save(checkpoint, f'./checkpoint{step}.pt')
+            torch.save(checkpoint, f'./checkpoints/checkpoint{step}.pt')
             print('Checkpoint saved.')
             raise
     print(message)
