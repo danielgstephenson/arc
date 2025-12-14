@@ -1,6 +1,4 @@
-import array
 from math import pi
-import string
 import torch
 from torch import Tensor, chunk, nn, tensor
 from torch.utils.data import DataLoader, TensorDataset
@@ -13,6 +11,7 @@ import io
 import contextlib
 import socketio
 from typing import Any
+import math
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
@@ -129,16 +128,19 @@ for batch in range(10000000000):
             future_value = caution*average_value + (1-caution)*max_value
         target = (1-discount)*reward + discount*future_value
         loss = F.mse_loss(output, target, reduction='mean')
-        loss.backward()
-        optimizer.step()
-        checkpoint = { 'state_dict': model.state_dict() }
-        try:
-            torch.save(checkpoint, f'./checkpoint{step}.pt')
-        except KeyboardInterrupt:
-            print('\nKeyboardInterrupt detected. Saving checkpoint...')
-            torch.save(checkpoint, f'./checkpoint{step}.pt')
-            print('Checkpoint saved.')
-            raise
         loss_value = loss.detach().cpu().numpy()
         message += f' {loss_value:.1f}'
+        if math.isnan(loss_value):
+            continue
+        loss.backward()
+        optimizer.step()
+        if loss_value < 20:
+            checkpoint = { 'state_dict': model.state_dict() }
+            try:
+                torch.save(checkpoint, f'./checkpoint{step}.pt')
+            except KeyboardInterrupt:
+                print('\nKeyboardInterrupt detected. Saving checkpoint...')
+                torch.save(checkpoint, f'./checkpoint{step}.pt')
+                print('Checkpoint saved.')
+                raise
     print(message)
