@@ -110,7 +110,7 @@ for batch in range(10000000000):
     message = f'Batch: {batch}, Losses:'
     for step in range(1,steps):
         model: ValueModel = models[step]
-        optimizer = optimizers[step]
+        optimizer: torch.optim.Optimizer = optimizers[step]
         optimizer.zero_grad()
         states = data[:,0:16]
         output = model(states)
@@ -134,7 +134,7 @@ for batch in range(10000000000):
             continue
         loss.backward()
         optimizer.step()
-        if loss_value < 20:
+        if loss_value < 40:
             checkpoint = { 'state_dict': model.state_dict() }
             try:
                 torch.save(checkpoint, f'./checkpoint{step}.pt')
