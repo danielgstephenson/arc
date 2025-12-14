@@ -78,7 +78,7 @@ models: list[Any] = [get_reward]
 optimizers: list[Any] = [0]
 for step in range(1,steps):
     model = ValueModel().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     models.append(model)
     optimizers.append(optimizer)
     checkpoint_path = f'./checkpoint{step}.pt'
@@ -130,17 +130,15 @@ for batch in range(10000000000):
         loss = F.mse_loss(output, target, reduction='mean')
         loss_value = loss.detach().cpu().numpy()
         message += f' {loss_value:.1f}'
-        if math.isnan(loss_value):
-            continue
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=400.0)
         optimizer.step()
-        if loss_value < 40:
-            checkpoint = { 'state_dict': model.state_dict() }
-            try:
-                torch.save(checkpoint, f'./checkpoint{step}.pt')
-            except KeyboardInterrupt:
-                print('\nKeyboardInterrupt detected. Saving checkpoint...')
-                torch.save(checkpoint, f'./checkpoint{step}.pt')
-                print('Checkpoint saved.')
-                raise
+        checkpoint = { 'state_dict': model.state_dict() }
+        try:
+            torch.save(checkpoint, f'./checkpoint{step}.pt')
+        except KeyboardInterrupt:
+            print('\nKeyboardInterrupt detected. Saving checkpoint...')
+            torch.save(checkpoint, f'./checkpoint{step}.pt')
+            print('Checkpoint saved.')
+            raise
     print(message)
