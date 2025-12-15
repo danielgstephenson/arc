@@ -14,7 +14,7 @@ export class Model {
   }
 
   async startSession (): Promise<void> {
-    this.session = await ort.InferenceSession.create('./model/onnx/model20.onnx')
+    this.session = await ort.InferenceSession.create('./model/onnx/model5.onnx')
     console.time('inference')
     let data = Float32Array.from(range(16))
     let tensor = new ort.Tensor('float32', data, [1, 16])

@@ -63,7 +63,11 @@ def get_reward(states: Tensor)->Tensor:
     pos1 = states[:,8:10]
     dist0 = torch.sqrt(torch.sum(pos0**2,dim=1))
     dist1 = torch.sqrt(torch.sum(pos1**2,dim=1))
-    return (dist1 - 0.1*dist0).unsqueeze(1)
+    close = torch.tensor(10)
+    dist0 = torch.maximum(dist0,close)
+    swing0 = torch.sqrt(torch.sum(states[:,6:8],dim=1))
+    reward = dist1 - dist0 + swing0*(dist0==close)
+    return reward.unsqueeze(1)
 
 def save_onnx(model: nn.Module, filePath: str):
     with contextlib.redirect_stdout(io.StringIO()):
@@ -93,9 +97,9 @@ for step in range(1,steps):
     save_onnx(models[step],fileName)
 
 # os.system('clear')
-discount = 1
-self_noise = 0
-other_noise = 0.05
+discount = 0.95
+self_noise = 0.1
+other_noise = 0.1
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 sio.emit('requestData')
