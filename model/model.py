@@ -106,27 +106,29 @@ for optimizer in optimizers:
 #      save_onnx(models[step],fileName)
 
 # os.system('clear')
-discount = 0.95
-self_noise = 0.1
-other_noise = 0.01
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 sio.emit('requestData')
-event = sio.receive()
-bytes = bytearray(event[1])
-data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
-sio.emit('requestData')
 
+def get_data()->Tensor:
+    samples: list[Tensor] = []
+    for _ in range(10):
+        event = sio.receive()
+        bytes = bytearray(event[1])
+        new_data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
+        samples.append(new_data)
+    sio.emit('requestData')
+    return torch.cat(samples,dim=0)
+
+discount = 0.95
+self_noise = 0.1
+other_noise = 0.01
 print('Training...')
 for batch in range(10000000000):
-    event = sio.receive()
-    sio.emit('requestData')
-    bytes = bytearray(event[1])
-    new_data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
-    data = torch.cat((data[-9000:,:],new_data),dim=0)
+    data = get_data()
     n = data.shape[0]
     message = f'Batch: {batch}, Losses:'
-    for step in range(15):
+    for step in range(6):
         model = models[step]
         optimizer = optimizers[step]
         optimizer.zero_grad()
