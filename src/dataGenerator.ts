@@ -10,6 +10,7 @@ export class DataGenerator {
   count = 0
 
   constructor (io: SocketIoServer) {
+    console.log('DataGenerator')
     this.io = io
     this.imagination.timeStep = 0.2
     const fighter0 = this.imagination.addFighter(new Vec2(0, +10))

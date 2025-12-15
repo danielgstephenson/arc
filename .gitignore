@@ -5,3 +5,5 @@ config.json
 *.pem
 *.csv
 *.bin
+*.pt
+*.onnx

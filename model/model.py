@@ -32,29 +32,18 @@ class ValueModel(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.activation = torch.nn.LeakyReLU(negative_slope=0.01)
-        n0 = 16
-        k = 100
-        self.h0 = nn.Linear(n0, k)
-        self.h1 = nn.Linear(n0 + 1*k, k)
-        self.h2 = nn.Linear(n0 + 2*k, k)
-        self.h3 = nn.Linear(n0 + 3*k, k)
-        self.h4 = nn.Linear(n0 + 4*k, k)
-        self.h5 = nn.Linear(n0 + 5*k, k)
-        self.h6 = nn.Linear(n0 + 6*k, 1)
+        inputSize = 16
+        k = 50
+        self.hiddenCount = 15
+        self.hiddenLayers = nn.ModuleList([nn.Linear(inputSize + i*k, k) for i in range(self.hiddenCount)])
+        self.outputLayer = nn.Linear(inputSize + self.hiddenCount*k, 1)
     def forward(self, state: Tensor) -> Tensor:
-        y0: Tensor = self.activation(self.h0(state))
-        x1 = torch.cat((state, y0), dim=1)
-        y1: Tensor = self.activation(self.h1(x1))
-        x2 = torch.cat((x1, y1), dim=1)
-        y2: Tensor = self.activation(self.h2(x2))
-        x3 = torch.cat((x2, y2), dim=1)
-        y3: Tensor = self.activation(self.h3(x3))
-        x4 = torch.cat((x3, y3), dim=1)
-        y4: Tensor = self.activation(self.h4(x4))
-        x5 = torch.cat((x4, y4), dim=1)
-        y5: Tensor = self.activation(self.h5(x5))
-        x6 = torch.cat((x5, y5), dim=1)
-        return self.h6(x6)
+        x = state
+        for i in range(self.hiddenCount):
+            h = self.hiddenLayers[i]
+            y: Tensor = self.activation(h(x))
+            x = torch.cat((x,y),dim=1)
+        return self.outputLayer(x)
     def __call__(self, *args, **kwds) -> Tensor:
         return super().__call__(*args, **kwds)
     
@@ -65,8 +54,8 @@ def get_reward(states: Tensor)->Tensor:
     dist1 = torch.sqrt(torch.sum(pos1**2,dim=1))
     close = torch.tensor(10)
     dist0 = torch.maximum(dist0,close)
-    swing0 = torch.sqrt(torch.sum(states[:,6:8],dim=1))
-    reward = dist1 - dist0 + swing0*(dist0==close)
+    swing0 = torch.sqrt(torch.sum(states[:,6:8]**2,dim=1))
+    reward = dist1 - dist0 + 0.25*swing0
     return reward.unsqueeze(1)
 
 def save_onnx(model: nn.Module, filePath: str):
@@ -91,10 +80,10 @@ for step in range(1,steps):
         checkpoint = torch.load(checkpoint_path, weights_only=False)
         model.load_state_dict(checkpoint['state_dict'])
 
-for step in range(1,steps):
-    fileName = f'./onnx/model{step}.onnx'
-    print(f'saving {fileName} ...')
-    save_onnx(models[step],fileName)
+# for step in range(1,steps):
+#     fileName = f'./onnx/model{step}.onnx'
+#     print(f'saving {fileName} ...')
+#     save_onnx(models[step],fileName)
 
 # os.system('clear')
 discount = 0.95
@@ -103,6 +92,7 @@ other_noise = 0.1
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 sio.emit('requestData')
+
 
 print('Training...')
 for batch in range(10000000000):
@@ -119,7 +109,7 @@ for batch in range(10000000000):
         optimizer.zero_grad()
         states = data[:,0:16]
         output = model(states)
-        reward = get_reward(output)
+        reward = get_reward(states)
         potential_futures = data[:,16:]
         with torch.no_grad():
             n = potential_futures.shape[0]
@@ -136,8 +126,6 @@ for batch in range(10000000000):
         target = (1-discount)*reward + discount*future_state_value
         loss = F.mse_loss(output, target, reduction='mean')
         loss_value = loss.detach().cpu().numpy()
-        if math.isnan(loss_value):
-            continue
         message += f' {loss_value:.1f}'
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=50.0)
