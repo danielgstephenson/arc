@@ -1,6 +1,7 @@
 from math import isnan, pi
 import torch
 from torch import Tensor, chunk, nn, tensor
+from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
 import torch.nn.functional as F
 import pandas as pd
@@ -58,32 +59,51 @@ def get_reward(states: Tensor)->Tensor:
     reward = dist1 - dist0 + 0.25*swing0
     return reward.unsqueeze(1)
 
-def save_onnx(model: nn.Module, filePath: str):
+def save_onnx(model: nn.Module, path: str):
     with contextlib.redirect_stdout(io.StringIO()):
         example_input = torch.tensor([[i for i in range(16)]],dtype=torch.float32).to(device)
         example_input_tuple = (example_input,)
         onnx_program = torch.onnx.export(model, example_input_tuple, dynamo=True)
         if onnx_program is not None:
-            onnx_program.save(filePath)
+            onnx_program.save(path)
 
+def save_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, path: str):
+    checkpoint = { 
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict()
+    }
+    try:
+        torch.save(checkpoint, path)
+    except KeyboardInterrupt:
+        print('\nKeyboardInterrupt detected. Saving checkpoint...')
+        torch.save(checkpoint, path)
+        print('Checkpoint saved.')
+        raise
+
+print('Loading checkpoints...')
 steps = 50
-models: list[Any] = [get_reward]
-optimizers: list[Any] = [0]
-for step in range(1,steps):
+models: list[ValueModel] = []
+optimizers: list[torch.optim.Optimizer] = []
+for step in range(steps):
     model = ValueModel().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     models.append(model)
     optimizers.append(optimizer)
     checkpoint_path = f'./checkpoints/checkpoint{step}.pt'
     if os.path.exists(checkpoint_path):
-        print(f'Loading {checkpoint_path} ...')
         checkpoint = torch.load(checkpoint_path, weights_only=False)
-        model.load_state_dict(checkpoint['state_dict'])
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+learning_rate = 0.0005
+for optimizer in optimizers:
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = learning_rate
 
 # for step in range(1,steps):
-#     fileName = f'./onnx/model{step}.onnx'
-#     print(f'saving {fileName} ...')
-#     save_onnx(models[step],fileName)
+#      fileName = f'./onnx/model{step}.onnx'
+#      print(f'saving {fileName} ...')
+#      save_onnx(models[step],fileName)
 
 # os.system('clear')
 discount = 0.95
@@ -103,9 +123,9 @@ for batch in range(10000000000):
     data = data.reshape(-1, 82*16).to(device)
     n = data.shape[0]
     message = f'Batch: {batch}, Losses:'
-    for step in range(1,steps):
-        model: ValueModel = models[step]
-        optimizer: torch.optim.Optimizer = optimizers[step]
+    for step in range(steps):
+        model = models[step]
+        optimizer = optimizers[step]
         optimizer.zero_grad()
         states = data[:,0:16]
         output = model(states)
@@ -114,7 +134,7 @@ for batch in range(10000000000):
         with torch.no_grad():
             n = potential_futures.shape[0]
             x = potential_futures.reshape(-1,16)        
-            old_model = models[step-1]
+            old_model = get_reward if step == 0 else models[step-1]
             potential_values = old_model(x)
             value_matrices = potential_values.reshape(n,9,9)
             means = torch.mean(value_matrices,2)
@@ -128,14 +148,7 @@ for batch in range(10000000000):
         loss_value = loss.detach().cpu().numpy()
         message += f' {loss_value:.1f}'
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=50.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
         optimizer.step()
-        checkpoint = { 'state_dict': model.state_dict() }
-        try:
-            torch.save(checkpoint, f'./checkpoints/checkpoint{step}.pt')
-        except KeyboardInterrupt:
-            print('\nKeyboardInterrupt detected. Saving checkpoint...')
-            torch.save(checkpoint, f'./checkpoints/checkpoint{step}.pt')
-            print('Checkpoint saved.')
-            raise
+        save_checkpoint(model, optimizer, f'./checkpoints/checkpoint{step}.pt')
     print(message)
