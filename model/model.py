@@ -53,7 +53,7 @@ def get_reward(states: Tensor)->Tensor:
     pos1 = states[:,8:10]
     dist0 = torch.sqrt(torch.sum(pos0**2,dim=1))
     dist1 = torch.sqrt(torch.sum(pos1**2,dim=1))
-    close = torch.tensor(10)
+    close = torch.tensor(5)
     dist0 = torch.maximum(dist0,close)
     swing0 = torch.sqrt(torch.sum(states[:,6:8]**2,dim=1))
     reward = dist1 - dist0 + 0.25*swing0
@@ -95,7 +95,7 @@ for step in range(steps):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-learning_rate = 0.0005
+learning_rate = 0.00001
 for optimizer in optimizers:
     for param_group in optimizer.param_groups:
         param_group['lr'] = learning_rate
@@ -108,7 +108,7 @@ for optimizer in optimizers:
 # os.system('clear')
 discount = 0.95
 self_noise = 0.1
-other_noise = 0.1
+other_noise = 0.01
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 sio.emit('requestData')
@@ -123,7 +123,7 @@ for batch in range(10000000000):
     data = data.reshape(-1, 82*16).to(device)
     n = data.shape[0]
     message = f'Batch: {batch}, Losses:'
-    for step in range(steps):
+    for step in range(20):
         model = models[step]
         optimizer = optimizers[step]
         optimizer.zero_grad()

@@ -34,7 +34,7 @@ export class Model {
     result = await this.session.run(feeds)
     console.timeEnd('inference')
     console.log('result', Object.keys(result))
-    console.log('value', result.linear_6.data[0])
+    console.log('value', result.linear_15.data[0])
   }
 
   async update (state: number[]): Promise<void> {
@@ -67,7 +67,7 @@ export class Model {
     const feeds = { state: tensor }
     if (this.session == null) return 0
     const result = await this.session.run(feeds)
-    const value = Number(result.linear_6.data[0])
+    const value = Number(result.linear_15.data[0])
     return value
   }
 }
