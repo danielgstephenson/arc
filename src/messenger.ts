@@ -2,7 +2,7 @@ import { Server } from './server'
 import { Server as SocketIoServer } from 'socket.io'
 import { Simulation } from './simulation/simulation'
 import { Trial } from './simulation/trial'
-import { DataGenerator } from './dataGenerator'
+// import { DataGenerator } from './dataGenerator'
 import { Imagination } from './simulation/imagination'
 
 export class Messenger {

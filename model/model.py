@@ -95,7 +95,7 @@ for step in range(steps):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-learning_rate = 0.00001
+learning_rate = 0.0001
 for optimizer in optimizers:
     for param_group in optimizer.param_groups:
         param_group['lr'] = learning_rate
@@ -112,18 +112,21 @@ other_noise = 0.01
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 sio.emit('requestData')
-
+event = sio.receive()
+bytes = bytearray(event[1])
+data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
+sio.emit('requestData')
 
 print('Training...')
 for batch in range(10000000000):
     event = sio.receive()
     sio.emit('requestData')
-    data_bytearray = bytearray(event[1])
-    data = torch.frombuffer(data_bytearray,dtype=torch.float32)
-    data = data.reshape(-1, 82*16).to(device)
+    bytes = bytearray(event[1])
+    new_data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
+    data = torch.cat((data[-9000:,:],new_data),dim=0)
     n = data.shape[0]
     message = f'Batch: {batch}, Losses:'
-    for step in range(20):
+    for step in range(15):
         model = models[step]
         optimizer = optimizers[step]
         optimizer.zero_grad()
@@ -146,7 +149,7 @@ for batch in range(10000000000):
         target = (1-discount)*reward + discount*future_state_value
         loss = F.mse_loss(output, target, reduction='mean')
         loss_value = loss.detach().cpu().numpy()
-        message += f' {loss_value:.1f}'
+        message += f' {loss_value:.2f}'
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
         optimizer.step()
