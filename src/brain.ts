@@ -3,7 +3,7 @@ import { range, whichMax } from './math'
 import * as ort from 'onnxruntime-node'
 import { Imagination } from './simulation/imagination'
 
-export class Model {
+export class Brain {
   imagination = new Imagination()
   session?: ort.InferenceSession
   busy: boolean = false
@@ -14,7 +14,7 @@ export class Model {
   }
 
   async startSession (): Promise<void> {
-    this.session = await ort.InferenceSession.create('./model/onnx/model5.onnx')
+    this.session = await ort.InferenceSession.create('./model/onnx/model1.onnx')
     console.time('inference')
     let data = Float32Array.from(range(16))
     let tensor = new ort.Tensor('float32', data, [1, 16])

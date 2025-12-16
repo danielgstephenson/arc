@@ -4,10 +4,10 @@ import { randomDir } from '../math'
 import { Fighter } from '../entities/fighter'
 import { Arena } from '../entities/arena'
 import { Blade } from '../features/blade'
-import { Model } from '../model'
+import { Brain } from '../brain'
 
 export class Trial extends Simulation {
-  model = new Model()
+  brain = new Brain()
   timeStep = 0.04
   currentStep = 0
   maxStep = 4
@@ -33,7 +33,7 @@ export class Trial extends Simulation {
 
   preStep (dt: number): void {
     super.preStep(dt)
-    this.bot.action = this.model.action
+    this.bot.action = this.brain.action
   }
 
   postStep (dt: number): void {
@@ -45,7 +45,7 @@ export class Trial extends Simulation {
     const botState = this.bot.getState()
     const playerState = this.player.getState()
     const state = [...botState, ...playerState]
-    void this.model.update(state)
+    void this.brain.update(state)
     this.currentStep += 1
   }
 

@@ -49,14 +49,17 @@ class ValueModel(torch.nn.Module):
         return super().__call__(*args, **kwds)
     
 def get_reward(states: Tensor)->Tensor:
-    pos0 = states[:,0:2]
-    pos1 = states[:,8:10]
-    dist0 = torch.sqrt(torch.sum(pos0**2,dim=1))
-    dist1 = torch.sqrt(torch.sum(pos1**2,dim=1))
+    fighterPos0 = states[:,0:2]
+    fighterPos1 = states[:,8:10]
+    weaponPos0 = states[:,4:6]
+    weaponPos1 = states[:,12:14]
+    dist0 = torch.sqrt(torch.sum(fighterPos0**2,dim=1))
+    dist1 = torch.sqrt(torch.sum(fighterPos1**2,dim=1))
     close = torch.tensor(5)
     dist0 = torch.maximum(dist0,close)
-    swing0 = torch.sqrt(torch.sum(states[:,6:8]**2,dim=1))
-    reward = dist1 - dist0 + 0.25*swing0
+    danger0 = torch.sqrt(torch.sum((fighterPos0-weaponPos1)**2,dim=1))
+    danger1 = torch.sqrt(torch.sum((fighterPos1-weaponPos0)**2,dim=1))
+    reward = dist1 - dist0 + 0.2 * (danger1 - danger0)
     return reward.unsqueeze(1)
 
 def save_onnx(model: nn.Module, path: str):
@@ -95,15 +98,15 @@ for step in range(nstep):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-learning_rate = 0.0001
+learning_rate = 0.000001
 for optimizer in optimizers:
     for param_group in optimizer.param_groups:
         param_group['lr'] = learning_rate
 
-# for step in range(1,steps):
-#      fileName = f'./onnx/model{step}.onnx'
-#      print(f'saving {fileName} ...')
-#      save_onnx(models[step],fileName)
+for step in range(6):
+     fileName = f'./onnx/model{step}.onnx'
+     print(f'saving {fileName} ...')
+     save_onnx(models[step],fileName)
 
 # os.system('clear')
 sio = socketio.SimpleClient()
@@ -125,7 +128,7 @@ for batch in range(10000000000):
     data = get_data()
     n = data.shape[0]
     message = f'Batch: {batch}, Losses:'
-    for step in range(15):
+    for step in range(6):
         model = models[step]
         optimizer = optimizers[step]
         optimizer.zero_grad()
