@@ -13,9 +13,9 @@ export class Messenger {
   constructor (server: Server) {
     console.log('messenger')
     this.io = new SocketIoServer(server.httpServer)
-    // const dataGenerator = new DataGenerator(this.io)
-    // this.simulation = dataGenerator.imagination
-    this.simulation = new Trial()
+    const dataGenerator = new DataGenerator(this.io)
+    this.simulation = dataGenerator.imagination
+    // this.simulation = new Trial()
     this.server = server
     this.setupIo()
   }

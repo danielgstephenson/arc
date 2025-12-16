@@ -35,7 +35,7 @@ class ValueModel(torch.nn.Module):
         self.activation = torch.nn.LeakyReLU(negative_slope=0.01)
         inputSize = 16
         k = 50
-        self.hiddenCount = 15
+        self.hiddenCount = 25
         self.hiddenLayers = nn.ModuleList([nn.Linear(inputSize + i*k, k) for i in range(self.hiddenCount)])
         self.outputLayer = nn.Linear(inputSize + self.hiddenCount*k, 1)
     def forward(self, state: Tensor) -> Tensor:
@@ -98,27 +98,26 @@ for step in range(nstep):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-learning_rate = 0.000001
-for optimizer in optimizers:
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = learning_rate
-
-for step in range(6):
-     fileName = f'./onnx/model{step}.onnx'
-     print(f'saving {fileName} ...')
-     save_onnx(models[step],fileName)
-
 # os.system('clear')
 sio = socketio.SimpleClient()
 sio.connect('http://localhost:3000')
 sio.emit('requestData')
-
 def get_data()->Tensor:
     event = sio.receive()
     sio.emit('requestData')
     bytes = bytearray(event[1])
     new_data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
     return new_data
+
+for step in range(6):
+     fileName = f'./onnx/model{step}.onnx'
+     print(f'saving {fileName} ...')
+     save_onnx(models[step],fileName)
+
+learning_rate = 0.0001
+for optimizer in optimizers:
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = learning_rate
 
 discount = 0.95
 self_noise = 0.1
