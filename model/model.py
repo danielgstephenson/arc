@@ -81,10 +81,10 @@ def save_checkpoint(model: nn.Module, optimizer: torch.optim.Optimizer, path: st
         raise
 
 print('Loading checkpoints...')
-steps = 50
+nstep = 50
 models: list[ValueModel] = []
 optimizers: list[torch.optim.Optimizer] = []
-for step in range(steps):
+for step in range(nstep):
     model = ValueModel().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     models.append(model)
@@ -111,14 +111,11 @@ sio.connect('http://localhost:3000')
 sio.emit('requestData')
 
 def get_data()->Tensor:
-    samples: list[Tensor] = []
-    for _ in range(10):
-        event = sio.receive()
-        bytes = bytearray(event[1])
-        new_data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
-        samples.append(new_data)
+    event = sio.receive()
     sio.emit('requestData')
-    return torch.cat(samples,dim=0)
+    bytes = bytearray(event[1])
+    new_data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
+    return new_data
 
 discount = 0.95
 self_noise = 0.1
@@ -128,7 +125,7 @@ for batch in range(10000000000):
     data = get_data()
     n = data.shape[0]
     message = f'Batch: {batch}, Losses:'
-    for step in range(6):
+    for step in range(15):
         model = models[step]
         optimizer = optimizers[step]
         optimizer.zero_grad()

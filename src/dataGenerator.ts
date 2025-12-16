@@ -21,9 +21,7 @@ export class DataGenerator {
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
     this.io.on('connection', socket => {
       socket.on('requestData', () => {
-        range(10).forEach(_ => {
-          return socket.emit('data', this.generate())
-        })
+        return socket.emit('data', this.generate())
       })
     })
   }
