@@ -1,33 +1,58 @@
-from math import isnan, pi
 import torch
-from torch import Tensor, chunk, nn, tensor
-from torch.optim import Adam
-from torch.utils.data import DataLoader, TensorDataset
+from torch import Tensor, nn
+from torch.utils.data import DataLoader, IterableDataset
 import torch.nn.functional as F
-import pandas as pd
-import numpy as np
-from numpy import sin, cos
+from collections import deque
 import os
 import io
 import contextlib
 import socketio
-from typing import Any
-import math
+import time
+
+class SocketDataset(IterableDataset):
+    def __init__(self, server_url):
+        super().__init__()
+        self.server_url = server_url
+        # self.sio = socketio.Client(engineio_logger=True, logger=True)
+        self.sio = socketio.Client()
+        self.data_queue: deque[Tensor] = deque([])
+
+        @self.sio.event
+        def connect():
+            print('Socket.IO connected')
+
+        @self.sio.event
+        def disconnect():
+            print("Socket.IO disconnected")    
+
+        @self.sio.on('data') # type: ignore
+        def new_data(data):
+            data_bytes = bytearray(data)
+            data_tensor = torch.frombuffer(data_bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
+            self.data_queue.append(data_tensor)
+
+    def connect_socket(self):
+        try:
+            self.sio.connect(self.server_url,namespaces=['/'])
+        except Exception as e:
+            print(f"Connection failed: {e}")
+
+    def __iter__(self):
+        return self.generator()
+
+    def generator(self):
+        if not self.sio.connected:
+            self.connect_socket() 
+        while True:
+            if len(self.data_queue)>0:
+                yield self.data_queue.popleft()
+            else:
+                time.sleep(0.01)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("device = " + str(device))
 torch.set_default_dtype(torch.float32)
 torch.set_printoptions(sci_mode=False)
-
-move_vector_array = [
-    [np.round(cos(i/4*pi),6), np.round(sin(i/4*pi),6)] 
-    for i in range(8)]
-action_array = np.concatenate(([[0,0]],move_vector_array)).tolist()
-action_vectors = torch.tensor(action_array,dtype=torch.float32).to(device)
-action_profiles = torch.tensor([
-    action_array[i] + action_array[j]
-    for i in range(9) for j in range(9)
-]).to(device)
 
 class ValueModel(torch.nn.Module):
     def __init__(self, *args, **kwargs):
@@ -99,60 +124,55 @@ for step in range(nstep):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 # os.system('clear')
-sio = socketio.SimpleClient()
-sio.connect('http://localhost:3000')
-sio.emit('requestData')
-def get_data()->Tensor:
-    event = sio.receive()
-    sio.emit('requestData')
-    bytes = bytearray(event[1])
-    new_data = torch.frombuffer(bytes,dtype=torch.float32).reshape(-1, 82*16).to(device)
-    return new_data
 
-for step in range(6):
+for step in range(1):
      fileName = f'./onnx/model{step}.onnx'
      print(f'saving {fileName} ...')
      save_onnx(models[step],fileName)
 
-learning_rate = 0.0001
+learning_rate = 0.001
 for optimizer in optimizers:
     for param_group in optimizer.param_groups:
         param_group['lr'] = learning_rate
+
+dataset = SocketDataset('http://localhost:3000')
+dataset.connect_socket()
+dataloader = DataLoader(dataset, batch_size=1, num_workers=0)
 
 discount = 0.95
 self_noise = 0.1
 other_noise = 0.01
 print('Training...')
-for batch in range(10000000000):
-    data = get_data()
+for batch, batch_data in enumerate(dataloader):
+    data: Tensor = torch.flatten(batch_data, start_dim=0, end_dim=1).to(device)
     n = data.shape[0]
-    message = f'Batch: {batch}, Losses:'
-    for step in range(6):
-        model = models[step]
-        optimizer = optimizers[step]
-        optimizer.zero_grad()
-        states = data[:,0:16]
-        output = model(states)
-        reward = get_reward(states)
-        potential_futures = data[:,16:]
-        with torch.no_grad():
-            n = potential_futures.shape[0]
-            x = potential_futures.reshape(-1,16)        
-            old_model = get_reward if step == 0 else models[step-1]
-            potential_values = old_model(x)
-            value_matrices = potential_values.reshape(n,9,9)
-            means = torch.mean(value_matrices,2)
-            mins = torch.amin(value_matrices,2)
-            action_values = other_noise*means + (1-other_noise)*mins
-            max_value = torch.amax(action_values,1).unsqueeze(1)
-            average_value = torch.mean(action_values,1).unsqueeze(1)
-            future_state_value = self_noise*average_value + (1-self_noise)*max_value
-        target = (1-discount)*reward + discount*future_state_value
-        loss = F.mse_loss(output, target, reduction='mean')
-        loss_value = loss.detach().cpu().numpy()
-        message += f' {loss_value:.2f}'
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
-        optimizer.step()
-        save_checkpoint(model, optimizer, f'./checkpoints/checkpoint{step}.pt')
+    message = f'Batch: {batch}, Loss:'
+    step = 0
+    model = models[step]
+    optimizer = optimizers[step]
+    optimizer.zero_grad()
+    states = data[:,0:16]
+    output = model(states)
+    reward = get_reward(states)
+    potential_futures = data[:,16:]
+    with torch.no_grad():
+        n = potential_futures.shape[0]
+        x = potential_futures.reshape(-1,16)        
+        old_model = get_reward if step == 0 else models[step-1]
+        potential_values = old_model(x)
+        value_matrices = potential_values.reshape(n,9,9)
+        means = torch.mean(value_matrices,2)
+        mins = torch.amin(value_matrices,2)
+        action_values = other_noise*means + (1-other_noise)*mins
+        max_value = torch.amax(action_values,1).unsqueeze(1)
+        average_value = torch.mean(action_values,1).unsqueeze(1)
+        future_state_value = self_noise*average_value + (1-self_noise)*max_value
+    target = (1-discount)*reward + discount*future_state_value
+    loss = F.mse_loss(output, target, reduction='mean')
+    loss_value = loss.detach().cpu().numpy()
+    message += f' {loss_value:05.2f}'
+    loss.backward()
+    # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
+    optimizer.step()
+    save_checkpoint(model, optimizer, f'./checkpoints/checkpoint{step}.pt')
     print(message)

@@ -6,7 +6,6 @@ import { Server as SocketIoServer } from 'socket.io'
 export class DataGenerator {
   imagination = new Imagination()
   io: SocketIoServer
-  filePath = './model/data.bin'
   count = 0
 
   constructor (io: SocketIoServer) {
@@ -19,14 +18,10 @@ export class DataGenerator {
     fighter0.weapon.color = 'hsla(220, 50%, 40%, 0.5)'
     fighter1.color = 'hsl(120, 100%, 25%)'
     fighter1.weapon.color = 'hsla(120, 100%, 25%, 0.5)'
-    this.io.on('connection', socket => {
-      socket.on('requestData', () => {
-        return socket.emit('data', this.generate())
-      })
-    })
+    this.generate()
   }
 
-  generate (): Buffer<ArrayBuffer> {
+  generate (): void {
     const data: number[] = []
     range(1000).forEach(_ => {
       this.reset()
@@ -55,7 +50,10 @@ export class DataGenerator {
     })
     const float32Array = new Float32Array(data)
     const buffer = Buffer.from(float32Array.buffer)
-    return buffer
+    this.io.emit('data', buffer)
+    this.count += 1
+    console.log('emit data', this.count)
+    setTimeout(() => this.generate(), 100)
   }
 
   reset (): void {
