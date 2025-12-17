@@ -33,7 +33,7 @@ class SocketDataset(IterableDataset):
 
     def connect_socket(self):
         try:
-            self.sio.connect(self.server_url,namespaces=['/'])
+            self.sio.connect(self.server_url, namespaces=['/'], transports=['websocket'])
         except Exception as e:
             print(f"Connection failed: {e}")
 
@@ -57,7 +57,7 @@ torch.set_printoptions(sci_mode=False)
 class ValueModel(torch.nn.Module):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.activation = torch.nn.LeakyReLU(negative_slope=0.01)
+        self.activation = torch.nn.ReLU()
         inputSize = 16
         k = 50
         self.hiddenCount = 25
@@ -125,7 +125,7 @@ for step in range(nstep):
 
 # os.system('clear')
 
-for step in range(1):
+for step in range(6):
      fileName = f'./onnx/model{step}.onnx'
      print(f'saving {fileName} ...')
      save_onnx(models[step],fileName)
@@ -135,7 +135,7 @@ for optimizer in optimizers:
     for param_group in optimizer.param_groups:
         param_group['lr'] = learning_rate
 
-dataset = SocketDataset('http://localhost:3000')
+dataset = SocketDataset('http://127.0.0.1:3000')
 dataset.connect_socket()
 dataloader = DataLoader(dataset, batch_size=1, num_workers=0)
 
@@ -147,32 +147,32 @@ for batch, batch_data in enumerate(dataloader):
     data: Tensor = torch.flatten(batch_data, start_dim=0, end_dim=1).to(device)
     n = data.shape[0]
     message = f'Batch: {batch}, Loss:'
-    step = 0
-    model = models[step]
-    optimizer = optimizers[step]
-    optimizer.zero_grad()
-    states = data[:,0:16]
-    output = model(states)
-    reward = get_reward(states)
-    potential_futures = data[:,16:]
-    with torch.no_grad():
-        n = potential_futures.shape[0]
-        x = potential_futures.reshape(-1,16)        
-        old_model = get_reward if step == 0 else models[step-1]
-        potential_values = old_model(x)
-        value_matrices = potential_values.reshape(n,9,9)
-        means = torch.mean(value_matrices,2)
-        mins = torch.amin(value_matrices,2)
-        action_values = other_noise*means + (1-other_noise)*mins
-        max_value = torch.amax(action_values,1).unsqueeze(1)
-        average_value = torch.mean(action_values,1).unsqueeze(1)
-        future_state_value = self_noise*average_value + (1-self_noise)*max_value
-    target = (1-discount)*reward + discount*future_state_value
-    loss = F.mse_loss(output, target, reduction='mean')
-    loss_value = loss.detach().cpu().numpy()
-    message += f' {loss_value:05.2f}'
-    loss.backward()
-    # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
-    optimizer.step()
-    save_checkpoint(model, optimizer, f'./checkpoints/checkpoint{step}.pt')
+    for step in range(6):
+        model = models[step]
+        optimizer = optimizers[step]
+        optimizer.zero_grad()
+        states = data[:,0:16]
+        output = model(states)
+        reward = get_reward(states)
+        potential_futures = data[:,16:]
+        with torch.no_grad():
+            n = potential_futures.shape[0]
+            x = potential_futures.reshape(-1,16)        
+            old_model = get_reward if step == 0 else models[step-1]
+            potential_values = old_model(x)
+            value_matrices = potential_values.reshape(n,9,9)
+            means = torch.mean(value_matrices,2)
+            mins = torch.amin(value_matrices,2)
+            action_values = other_noise*means + (1-other_noise)*mins
+            max_value = torch.amax(action_values,1).unsqueeze(1)
+            average_value = torch.mean(action_values,1).unsqueeze(1)
+            future_state_value = self_noise*average_value + (1-self_noise)*max_value
+        target = (1-discount)*reward + discount*future_state_value
+        loss = F.mse_loss(output, target, reduction='mean')
+        loss_value = loss.detach().cpu().numpy()
+        message += f' {loss_value:05.2f}'
+        loss.backward()
+        # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=10.0)
+        optimizer.step()
+        save_checkpoint(model, optimizer, f'./checkpoints/checkpoint{step}.pt')
     print(message)
